@@ -5,7 +5,7 @@ import { imessage } from "spectrum-ts/providers/imessage";
 
 // Spectrum (Photon) outbound iMessage service.
 //
-// The Wayline voice agent (Python, LiveKit) resolves a ticket "by text": it
+// The Mira voice agent (Python, LiveKit) resolves a ticket "by text": it
 // POSTs { to, body } here and we send it as an iMessage via the spectrum-ts SDK.
 // Photon has no Python/REST send endpoint, so this tiny service is the bridge.
 //

@@ -20,35 +20,37 @@ Moss ships as the `moss` package (already in `pyproject.toml`; install standalon
 
 ### What this agent is
 
-A **lab analyzer support agent** ("Vera", Helix Diagnostics). A technician at a
-halted Helix HX-220 hematology analyzer talks to it hands-free; it triages the
-fault code, walks the documented operator fix **one step at a time**, deflects
-the vendor service call when it can, and generates an **escalation dossier** when
-it genuinely can't. It is a *stateful procedure-execution engine*, not flat Q&A:
-the in-call `RemediationSession` (in `src/agent.py`) holds `fault_code`,
-`step_idx`, and `attempts[]` and is what gets serialized into the dossier.
+**Mira**, an AI resident-support assistant for property management. A resident
+calls (voice) or texts (iMessage) and asks about rent, their lease, deposits, or
+maintenance. Mira answers grounded in the building's lease + handbook, remembers
+the resident across conversations, and resolves maintenance issues by opening a
+work-order ticket (emergencies get immediate dispatch + escalation). The voice
+agent lives in `src/agent.py`; the text channel shares the same Moss-grounded
+brain via `src/upload_server.py`'s `/api/answer`.
 
 ### Indexes
 
 The agent reads and writes two Moss indexes (names overridable via `MOSS_INDEX_NAME` / `MOSS_MEMORY_INDEX_NAME`):
 
-- **`knowledge`** — the static service-manual corpus: fault-code procedures + safety/interlock docs. Read-only at runtime; seeded from `knowledge.json`. Backs `search_procedures` / `lookup_symptom` and the live grounding panel.
-- **`memory`** — the per-**instrument** maintenance log. Read **and** write at runtime. Every document carries `metadata={"device_id": <serial>}`, and recall queries are scoped to the instrument with a metadata filter so one analyzer's history never bleeds into another's.
+- **`knowledge`** — the lease + property handbook. Read-only at runtime; seeded from `knowledge.json` and extended live via the document uploader. Backs `search_knowledge` and the grounding panel.
+- **`memory`** — per-**resident** memory. Read **and** write at runtime. Every document carries `metadata={"tenant_id": <id>}`, and recall is scoped with that filter so residents never see each other's facts.
 
-`knowledge.json` is the **single source of truth**: `src/create_index.py` ships each entry's `id`/`text`/`metadata` to Moss, while `src/agent.py` loads the same file's `fault_code`/`severity`/`steps`/`safety` fields into the `PROCEDURES` registry that drives the deterministic step-walker — so Moss grounding and the state machine never drift. Run `pnpm moss:index` (→ `uv --directory agent-py run src/create_index.py`) once Moss credentials are set.
+Run `pnpm moss:index` (→ `uv --directory agent-py run src/create_index.py`) once Moss credentials are set to (re)build both indexes from `knowledge.json`.
 
 ### Tools
 
 The `Assistant` (in `src/agent.py`) exposes these `@function_tool()` methods:
 
-- **`search_procedures(query)`** / **`lookup_symptom(description)`** — query the `knowledge` index (procedure grounding; symptom→code mapping), return text, and publish a `moss_context` data message for the frontend panel.
-- **`read_instrument()`** — the system-of-record / anti-hallucination tool. Returns the instrument's EXACT live state (active fault code, error log, reagent levels, last QC, firmware, temperature) from `MOCK_INSTRUMENTS` (stand-in for real device telemetry). Codes/part numbers are quoted by construction, never from the LLM.
-- **`start_remediation(fault_code)`** — initializes the `RemediationSession` and returns the safety note + first step. **Safety gate:** service-only faults (E-707/E-808/E-901) are refused here and routed to escalation.
-- **`advance_step(outcome, fault_cleared=False)`** — records the step outcome and returns the next step, resolution, or an exhaustion signal.
-- **`escalate_to_service()`** — builds the dossier from the session + instrument state and sends it as an **iMessage** via the Photon send service (POSTs `{to, body}` to `dummy-moss/`'s `localhost:8787/send`, which runs the `spectrum-ts` SDK — Photon has no Python/REST send path; degrades to reading a summary aloud). The resolution path (`advance_step` with `fault_cleared`) also iMessages the tech a receipt.
-- **`remember_observation(observation)`** / **`recall_history(query)`** — write/read the per-instrument `memory` index (`filter={"field": "device_id", "condition": {"$eq": <serial>}}`).
+- **`search_knowledge(query)`** — queries the `knowledge` index (lease/handbook), returns the grounding text, and publishes a `moss_context` data message to the frontend panel.
+- **`lookup_resident()`** — the system-of-record / anti-hallucination tool. Returns the resident's EXACT account (unit, rent, balance, lease dates, deposit) from `MOCK_TENANTS` (stand-in for the property-management system). Amounts/dates are quoted by construction, never from the LLM.
+- **`create_work_order(summary, urgency)`** — opens a maintenance work order, texts the resident a confirmation (via the Photon send service), and flags emergencies for immediate dispatch.
+- **`remember_fact(fact)`** / **`recall_facts(query)`** — write/read the per-resident `memory` index (`filter={"field": "tenant_id", "condition": {"$eq": <id>}}`).
 
-The per-instrument `device_id` is parsed from `ctx.job.metadata` (it accepts `device_id`, falling back to the stock frontend's `user_id` key, then a default for `console` mode). When you change a tool's behavior, follow the TDD guidance below and update `tests/test_moss.py`, which stubs `MossClient` so the tools can be tested without Moss credentials or network access.
+The per-resident `tenant_id` is parsed from `ctx.job.metadata` (it accepts `tenant_id`, falling back to the stock frontend's `user_id` key, then a default for `console` mode). When you change a tool's behavior, follow the TDD guidance below and update `tests/test_moss.py`, which stubs `MossClient` so the tools can be tested without Moss credentials or network access.
+
+### Models
+
+STT/LLM/TTS are env-toggled in `src/agent.py`: with `QWEN_API_KEY` / `MINIMAX_API_KEY` set, the brain is **Qwen** and the voice is **MiniMax**; otherwise both fall back to LiveKit Inference (Gemini Flash + Cartesia). STT is Deepgram via LiveKit Inference throughout.
 
 ## LiveKit Documentation
 

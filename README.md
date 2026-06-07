@@ -56,9 +56,9 @@ Moss's slice of it:        ▏ <10 ms  (≈1%)  ← no longer the bottleneck
               answers · work‑order tickets · escalation
 ```
 
-## Every sponsor, load‑bearing — not bolted on
+## Under the hood
 
-| Layer | Tech | Why it's here |
+| Layer | Tech | Role |
 |---|---|---|
 | **Retrieval** | **Moss** 🟢 | The hero. <10 ms grounding on the real lease/handbook — the only reason a voice agent can cite documents mid‑sentence. |
 | **Voice transport + agents** | **LiveKit** | Real‑time WebRTC, turn detection, the agent runtime. |
@@ -102,7 +102,7 @@ Only **two** credentials are required to run — **LiveKit** and **Moss**. Every
 │   ├── src/agent.py            # Mira: persona, tools, per‑resident memory, work orders
 │   ├── src/upload_server.py    # KB uploader + /api/answer (Moss‑grounded text brain)
 │   └── knowledge.json          # lease + property handbook (single source of truth)
-├── dummy-moss/        # Photon (Spectrum) iMessage service — inbound Q&A + outbound
+├── messaging/        # Photon (Spectrum) iMessage service — inbound Q&A + outbound
 ├── frontend/          # Next.js operator dashboard (Call · Call Logs · Knowledge)
 └── DEMO.md · ARCHITECTURE.md   # the story and the design
 ```

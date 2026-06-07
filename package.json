@@ -6,14 +6,14 @@
   "scripts": {
     "setup": "pnpm install:frontend && pnpm install:messaging && pnpm install:agent-py && pnpm env:copy",
     "install:frontend": "pnpm --dir frontend install",
-    "install:messaging": "pnpm --dir dummy-moss install",
+    "install:messaging": "pnpm --dir messaging install",
     "install:agent-py": "uv --directory agent-py sync",
-    "env:copy": "test -f frontend/.env.local || cp frontend/.env.example frontend/.env.local; test -f agent-py/.env.local || cp agent-py/.env.example agent-py/.env.local; test -f dummy-moss/.env || cp dummy-moss/.env.example dummy-moss/.env",
+    "env:copy": "test -f frontend/.env.local || cp frontend/.env.example frontend/.env.local; test -f agent-py/.env.local || cp agent-py/.env.example agent-py/.env.local; test -f messaging/.env || cp messaging/.env.example messaging/.env",
 
     "dev": "concurrently -n agent-py,frontend,imessage -c cyan,magenta,yellow \"pnpm dev:agent-py\" \"pnpm dev:frontend\" \"pnpm dev:messaging\"",
     "dev:frontend": "pnpm --dir frontend dev",
     "dev:agent-py": "uv --directory agent-py run src/agent.py dev",
-    "dev:messaging": "pnpm --dir dummy-moss dev",
+    "dev:messaging": "pnpm --dir messaging dev",
 
     "agent:py:console": "uv --directory agent-py run src/agent.py console",
     "agent:py:start": "uv --directory agent-py run src/agent.py start",
