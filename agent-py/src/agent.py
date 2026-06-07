@@ -420,7 +420,7 @@ async def my_agent(ctx: JobContext):
             logger.warning("ctx.job.metadata was not valid JSON; using default tenant")
 
     session = AgentSession(
-        # ASR — streaming speech-to-text via LiveKit Inference.
+        # ASR — real-time speech-to-text.
         stt=inference.STT(model="deepgram/nova-3", language="multi"),
         # TTS — MiniMax voice. See _build_tts.
         tts=_build_tts(),

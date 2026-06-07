@@ -11,7 +11,7 @@ Grounding a live conversation means retrieving the right document *while the per
 ```
    📞 Voice (WebRTC)                          💬 iMessage
         │                                          │
-   LiveKit · ASR                           Photon / Spectrum
+   ASR (speech-to-text)                    Photon / Spectrum
         │                                  inbound message loop
         │                                          │
         ▼                                          ▼
@@ -47,7 +47,7 @@ Every retrieval is published to the dashboard with its matched chunk, relevance 
 
 ## Models (swappable)
 
-Mira runs **Qwen** as the brain (LLM) and **MiniMax** for voice (TTS), with real-time transcription and transport handled by **LiveKit** (LiveKit Inference). Configure with `QWEN_*` / `MINIMAX_API_KEY` in `agent-py/.env.local`.
+The pipeline is **ASR → brain → TTS**: real-time speech-to-text, **Qwen** as the brain (LLM), and **MiniMax** for voice (TTS). Configure with `QWEN_*` / `MINIMAX_API_KEY` in `agent-py/.env.local`.
 
 ## Resolve, don't deflect
 

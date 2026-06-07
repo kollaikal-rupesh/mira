@@ -40,6 +40,8 @@ KNOWLEDGE_PATH = AGENT_DIR / "knowledge.json"
 load_dotenv(AGENT_DIR / ".env.local")
 
 KNOWLEDGE_INDEX = os.getenv("MOSS_INDEX_NAME", "knowledge")
+MEMORY_INDEX = os.getenv("MOSS_MEMORY_INDEX_NAME", "memory")
+DEFAULT_TENANT_ID = "tenant_1"
 UPLOAD_PORT = int(os.getenv("UPLOAD_PORT", "8080"))
 # Target chunk size (characters). Chunks split on paragraph/sentence boundaries.
 CHUNK_CHARS = int(os.getenv("UPLOAD_CHUNK_CHARS", "1100"))
@@ -69,14 +71,6 @@ async def _alert_pm(body: str) -> bool:
         return r.status_code == 200
     except Exception:
         return False
-
-_MIRA_SYS = (
-    "You are Mira, a resident-support assistant for a property-management company, "
-    "answering over text message. Answer the resident's question using ONLY the "
-    "property documents provided below; if they don't cover it, say you're not sure "
-    "and suggest contacting the office. Keep replies short and friendly (1-3 "
-    "sentences), plain text, no markdown."
-)
 
 app = FastAPI(title="Mira Knowledge Service")
 # Allow the dashboard (Next dev on any localhost port) to read/upload.
@@ -235,19 +229,29 @@ async def kb() -> JSONResponse:
     )
 
 
-_ANSWER_SYS = (
+# Step 1 — classify intent only (no facts/amounts, so JSON formatting is safe).
+_CLASSIFY_SYS = (
+    "Classify a resident's text message to a property manager. Decide if they are "
+    "REPORTING A MAINTENANCE ISSUE (something broken or not working: a leak, no heat "
+    "or AC, an appliance, plumbing, electrical, a lock, pests, etc.) or just ASKING A "
+    "QUESTION. Respond with ONLY a JSON object, no markdown:\n"
+    '{"is_maintenance": true or false, "issue": "<short description, or empty>", '
+    '"urgency": "emergency" or "routine", "ack": "<one short, warm acknowledgement '
+    'sentence — no facts, no ticket number>"}\n'
+    "Emergency = a major leak or flooding, no heat in cold weather, a gas smell, no "
+    "power, or a lockout."
+)
+
+# Step 2 — answer a question, grounded. Kept separate from classification so the
+# model stays faithful to the retrieved figures (it hallucinates when also asked
+# to format JSON).
+_REPLY_SYS = (
     "You are Mira, a resident-support assistant for a property-management company, "
-    "replying over text message. Use ONLY the property documents provided to answer "
-    "questions. Decide whether the resident is REPORTING A MAINTENANCE ISSUE "
-    "(something broken or not working: a leak, no heat or AC, an appliance, plumbing, "
-    "electrical, a lock, pests, etc.) or just ASKING A QUESTION.\n"
-    "Respond with ONLY a JSON object, no markdown and no extra text:\n"
-    '{"is_maintenance": true or false, "issue": "<short description of the problem, '
-    'or empty>", "urgency": "emergency" or "routine", "reply": "<for a question: a '
-    "grounded answer in 1-3 sentences. for maintenance: a brief, warm acknowledgement "
-    '— do NOT invent a ticket number>"}\n'
-    "Treat as emergency: a major leak or flooding, no heat in cold weather, a gas "
-    "smell, no power, or a lockout."
+    "replying over text. Answer using ONLY the context below. Quote any amounts, "
+    "fees, dates, and numbers EXACTLY as written — never approximate, round, or "
+    "substitute a typical figure. Never invent contact details, emails, phone "
+    "numbers, links, or names. If the context doesn't cover it, say you're not sure "
+    "and suggest contacting the office. Keep it to 1-3 plain-text sentences."
 )
 
 
@@ -271,15 +275,33 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
     maintenance issues and creates a work-order ticket. Used by the iMessage
     channel (dummy-moss) so texting Mira matches the voice agent."""
     question = (payload.get("question") or "").strip()
+    tenant_id = (payload.get("tenant_id") or DEFAULT_TENANT_ID).strip()
     if not question:
         return JSONResponse({"ok": False, "error": "no question"}, status_code=400)
 
-    # Retrieve grounding from Moss.
+    # Grounding from Moss: the lease/handbook (knowledge) PLUS this resident's
+    # memory (scoped by tenant_id) — the same retrieval the voice agent uses, so
+    # call and text share one grounded brain.
     context = ""
     try:
-        result = await _moss.query(KNOWLEDGE_INDEX, question, QueryOptions(top_k=3))
-        snippets = [(getattr(d, "text", "") or "").strip() for d in (result.docs or [])]
+        kb = await _moss.query(KNOWLEDGE_INDEX, question, QueryOptions(top_k=3))
+        snippets = [(getattr(d, "text", "") or "").strip() for d in (kb.docs or [])]
         context = "\n\n".join(s for s in snippets if s)
+    except Exception:
+        pass
+    try:
+        mem = await _moss.query(
+            MEMORY_INDEX,
+            question,
+            QueryOptions(
+                top_k=5,
+                filter={"field": "tenant_id", "condition": {"$eq": tenant_id}},
+            ),
+        )
+        facts = [(getattr(d, "text", "") or "").strip() for d in (mem.docs or [])]
+        facts = [f for f in facts if f]
+        if facts:
+            context += "\n\nWhat we already know about this resident:\n" + "\n".join(facts)
     except Exception:
         pass
 
@@ -292,32 +314,29 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
         )
         return JSONResponse({"ok": True, "messages": [ans]})
 
-    try:
-        from openai import AsyncOpenAI
+    from openai import AsyncOpenAI
 
-        client = AsyncOpenAI(api_key=QWEN_API_KEY, base_url=QWEN_BASE_URL)
-        resp = await client.chat.completions.create(
+    client = AsyncOpenAI(api_key=QWEN_API_KEY, base_url=QWEN_BASE_URL)
+
+    # Step 1: classify intent (cheap, JSON, no facts).
+    try:
+        cls = await client.chat.completions.create(
             model=QWEN_MODEL,
             messages=[
-                {"role": "system", "content": f"{_ANSWER_SYS}\n\nProperty documents:\n{context}"},
+                {"role": "system", "content": _CLASSIFY_SYS},
                 {"role": "user", "content": question},
             ],
-            max_tokens=220,
-            temperature=0.3,
+            max_tokens=120,
+            temperature=0,
         )
-        raw = resp.choices[0].message.content.strip()
+        parsed = _parse_json_object(cls.choices[0].message.content.strip()) or {}
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)[:200]}, status_code=502)
-
-    parsed = _parse_json_object(raw)
-    # If the model didn't return JSON, treat the whole thing as a plain answer.
-    if parsed is None:
-        return JSONResponse({"ok": True, "messages": [raw]})
 
     if parsed.get("is_maintenance"):
         wo = f"WO-{uuid.uuid4().hex[:6].upper()}"
         issue = (parsed.get("issue") or "your maintenance issue").strip()
-        ack = (parsed.get("reply") or "Thanks for letting me know — I'm on it.").strip()
+        ack = (parsed.get("ack") or "Thanks for letting me know — I'm on it.").strip()
         emergency = str(parsed.get("urgency", "routine")).lower() == "emergency"
 
         # Message 1: acknowledgement. Message 2: the ticket (sent separately).
@@ -353,9 +372,22 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
             }
         )
 
-    return JSONResponse(
-        {"ok": True, "messages": [(parsed.get("reply") or raw).strip()], "is_maintenance": False}
-    )
+    # Step 2: it's a question — answer it, grounded and faithful to the context.
+    try:
+        ans = await client.chat.completions.create(
+            model=QWEN_MODEL,
+            messages=[
+                {"role": "system", "content": f"{_REPLY_SYS}\n\nContext:\n{context}"},
+                {"role": "user", "content": question},
+            ],
+            max_tokens=200,
+            temperature=0,
+        )
+        reply = ans.choices[0].message.content.strip()
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)[:200]}, status_code=502)
+
+    return JSONResponse({"ok": True, "messages": [reply], "is_maintenance": False})
 
 
 _PAGE = """<!doctype html>
