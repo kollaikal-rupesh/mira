@@ -88,5 +88,30 @@
     "id": "kb-mold",
     "text": "Q: There is mold in my apartment, what should I do? A: First ask ONE clarifying question to size it up: roughly how large is the affected area — smaller or larger than about one square foot (a sheet of paper) — and what surface is it on? For a SMALL patch (under about one square foot) on a hard, non-porous surface like tile, grout, or a painted wall, the resident can usually handle it: put on gloves, wipe the area with a mix of dish soap and warm water (or a solution of one part bleach to ten parts water on non-porous surfaces only), dry it completely, then keep the area dry and improve airflow by running the bathroom or kitchen fan and reducing humidity. Tell them to follow up if it comes back. If the resident says that remedy did not work, or the mold is larger than about one square foot, keeps returning, is on porous material like drywall or carpet, or there are health concerns, do NOT have them keep cleaning it — create a maintenance work order and dispatch the on-call team, which is available 24/7 including overnight, because persistent or spreading mold is a health and habitability issue.",
     "metadata": { "category": "maintenance", "topic": "mold" }
+  },
+  {
+    "id": "kb-clogged-drain-toilet",
+    "text": "Q: My toilet or sink is clogged. A: Try to clear it first. For a clogged toilet, do not keep flushing (it can overflow); use a flange plunger, make a tight seal, and plunge firmly several times, then test with a small flush. For a slow sink or tub, remove and clean the stopper and hair from the drain and try a cup plunger; a mix of hot water with a little dish soap can help grease clogs. Avoid chemical drain cleaners, which can damage pipes. If plunging does not clear it, water is backing up, or it is a sewage backup, create a maintenance work order so a plumber is sent out.",
+    "metadata": { "category": "maintenance", "topic": "clog" }
+  },
+  {
+    "id": "kb-garbage-disposal",
+    "text": "Q: My garbage disposal stopped working or is jammed. A: First, never put your hand inside it. If it hums but doesn't spin or is silent: turn the disposal switch OFF, then press the small red RESET button on the underside of the unit and try again. If it only hums, it's jammed — with the power off, use the hex/Allen wrench in the slot at the bottom center to turn the blades free, then hit reset. If it still won't run after resetting, create a maintenance work order so a technician can take a look.",
+    "metadata": { "category": "maintenance", "topic": "garbage_disposal" }
+  },
+  {
+    "id": "kb-no-hot-water",
+    "text": "Q: I have no hot water. A: Quick checks first: make sure the issue isn't just a faucet set to cold, and check whether other taps also lack hot water. If you have an electric water heater, check the breaker panel for a tripped breaker and reset it. If it's gas and the pilot light is out and you know how to relight it safely, follow the instructions on the unit — but if you smell gas, leave and call 911 and the gas company first. If there's still no hot water after these checks, create a maintenance work order; total loss of hot water is treated as urgent and dispatched promptly.",
+    "metadata": { "category": "maintenance", "topic": "hot_water" }
+  },
+  {
+    "id": "kb-tripped-breaker",
+    "text": "Q: Some of my outlets or lights went out. A: This is usually a tripped breaker or GFCI outlet. At the breaker panel, find any breaker that's in the middle or OFF position, flip it fully OFF and then back ON. In kitchens, bathrooms, garages, and outdoors, also check for a GFCI outlet with a RESET button and press it. If a breaker trips again right after resetting, stop — that points to an electrical fault; unplug devices on that circuit and create a maintenance work order so an electrician can check it.",
+    "metadata": { "category": "maintenance", "topic": "electrical" }
+  },
+  {
+    "id": "kb-ac-not-cooling",
+    "text": "Q: My AC or heat isn't working well. A: First check the thermostat — confirm it's set to COOL or HEAT and the temperature is set past the current room temperature, and replace the batteries if the screen is blank. Then check and replace a dirty air filter, which is the most common cause of weak airflow, and make sure vents aren't blocked. Give it a few minutes to respond. If it still won't cool or heat after these steps — or there's no heat in freezing weather, which is an emergency — create a maintenance work order so an HVAC technician is dispatched.",
+    "metadata": { "category": "maintenance", "topic": "hvac" }
   }
 ]

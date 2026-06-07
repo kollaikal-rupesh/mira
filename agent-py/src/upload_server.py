@@ -240,11 +240,15 @@ _CLASSIFY_SYS = (
     'sentence — no facts, no ticket number>"}\n'
     "Emergency = a major leak or flooding, no heat in cold weather, a gas smell, no "
     "power, or a lockout.\n"
-    "REMEDY-FIRST issues (like mold or mildew) have a self-fix to try first. If the "
-    "resident reports one for the FIRST time and has NOT said a fix failed, set "
-    "is_maintenance=false (we'll walk them through the remedy). Set is_maintenance="
-    "true once they say the remedy did not work, it's large/spreading, or it's on "
-    "porous material — and treat that escalated case as urgency=emergency (on-call)."
+    "GOAL: resolve it if possible, otherwise create a work order. Many issues have "
+    "a simple self-fix to try FIRST — mold/mildew, a clogged toilet or drain, a "
+    "jammed garbage disposal, a tripped breaker or dead outlet, no hot water, weak "
+    "AC or heat. If the resident reports one of these for the FIRST time and has "
+    "NOT said a fix failed, set is_maintenance=false (we'll walk them through the "
+    "remedy). Set is_maintenance=true once they say the remedy did not work, there "
+    "is no safe self-fix, or it's clearly an emergency. Escalated mold, no heat in "
+    "freezing weather, total loss of hot water, or a breaker that keeps tripping "
+    "are urgency=emergency (on-call); other unresolved issues are routine."
 )
 
 # Step 2 — answer a question, grounded. Kept separate from classification so the
