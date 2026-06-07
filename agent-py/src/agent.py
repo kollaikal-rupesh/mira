@@ -6,6 +6,7 @@ import re
 import textwrap
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 import httpx
 from dotenv import load_dotenv
@@ -29,7 +30,9 @@ from moss import DocumentInfo, MossClient, QueryOptions
 
 logger = logging.getLogger("agent")
 
-load_dotenv(".env.local")
+# Absolute path so the env loads in job subprocesses (different CWD) too —
+# otherwise QWEN/MINIMAX keys go missing in the job and the agent can't join.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env.local")
 
 # Moss index names (overridable via env so create_index.py and the agent stay in
 # sync). `knowledge` backs RAG over the lease + property handbook (and any docs
