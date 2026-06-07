@@ -2,7 +2,7 @@
 
 # 🏠 Mira
 
-### The AI property manager your residents can **call _or_ text** — and it answers from the actual lease in **under 10 milliseconds.**
+### The AI property manager your residents can **call _or_ text**
 
 **One brain. Two channels. No hold music, no portal, no 9‑to‑5.**
 
