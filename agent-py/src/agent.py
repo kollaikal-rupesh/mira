@@ -15,10 +15,12 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
+    MetricsCollectedEvent,
     RunContext,
     cli,
     function_tool,
     inference,
+    metrics,
     room_io,
 )
 from livekit.plugins import ai_coustics, minimax, openai, silero
@@ -442,6 +444,12 @@ async def my_agent(ctx: JobContext):
         vad=ctx.proc.userdata["vad"],
         preemptive_generation=True,
     )
+
+    # Log per-turn latency (STT duration, LLM time-to-first-token, TTS
+    # time-to-first-byte, end-of-utterance delay) so we can see where time goes.
+    @session.on("metrics_collected")
+    def _on_metrics_collected(ev: MetricsCollectedEvent) -> None:
+        metrics.log_metrics(ev.metrics)
 
     await session.start(
         agent=Assistant(room=ctx.room, tenant_id=tenant_id),
