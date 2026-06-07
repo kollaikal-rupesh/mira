@@ -10,6 +10,7 @@ import json
 import pytest
 
 import agent as agent_module
+import work_orders as work_orders_module
 from agent import Assistant
 
 TENANT_ID = "tenant_42"
@@ -65,6 +66,13 @@ class _FakeRoom:
 @pytest.fixture
 def stub_moss(monkeypatch):
     monkeypatch.setattr(agent_module, "MossClient", _FakeMossClient)
+
+
+@pytest.fixture(autouse=True)
+def isolate_work_orders(tmp_path, monkeypatch):
+    """Point the work-order store at a throwaway file so tests don't write to
+    the repo's work_orders.json."""
+    monkeypatch.setattr(work_orders_module, "STORE_PATH", tmp_path / "work_orders.json")
 
 
 # --- Grounding ----------------------------------------------------------------
@@ -253,3 +261,27 @@ async def test_create_work_order_emergency_texts_via_bridge(
     assert sent["json"]["to"] == "+15552223333"
     assert "Water leaking from ceiling" in sent["json"]["body"]
     assert sent["headers"]["x-escalate-secret"] == "s3cret"
+
+
+async def test_create_work_order_records_to_store(stub_moss, monkeypatch) -> None:
+    for var in ("TENANT_PHONE", "DEMO_PHONE"):
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setattr(
+        agent_module,
+        "MOCK_TENANTS",
+        {TENANT_ID: {"name": "Sam", "unit": "Unit 2A"}},
+    )
+    assistant = Assistant(tenant_id=TENANT_ID)
+
+    await assistant.create_work_order(None, "Broken dishwasher", urgency="routine")
+
+    orders = work_orders_module.list_work_orders()
+    assert len(orders) == 1
+    order = orders[0]
+    assert order["summary"] == "Broken dishwasher"
+    assert order["urgency"] == "routine"
+    assert order["channel"] == "voice"
+    assert order["tenant_id"] == TENANT_ID
+    assert order["unit"] == "Unit 2A"
+    assert order["id"].startswith("WO-")
+    assert order["status"] == "open"

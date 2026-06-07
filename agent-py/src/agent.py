@@ -27,6 +27,9 @@ from livekit.plugins import ai_coustics, minimax, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from moss import DocumentInfo, MossClient, QueryOptions
 
+from work_orders import new_id as work_orders_new_id
+from work_orders import record_work_order
+
 logger = logging.getLogger("agent")
 
 load_dotenv(".env.local")
@@ -323,8 +326,18 @@ class Assistant(Agent):
         """
         t = _tenant_for(self._tenant_id)
         urgent = urgency.strip().lower() == "emergency"
-        wo_id = uuid.uuid4().hex[:6].upper()
+        wo_id = work_orders_new_id()
 
+        # Log to the shared store so it appears on the dashboard's Work Orders
+        # page (next to text-channel tickets), then to per-resident memory.
+        record_work_order(
+            wo_id=wo_id,
+            summary=summary,
+            urgency="emergency" if urgent else "routine",
+            channel="voice",
+            tenant_id=self._tenant_id,
+            unit=t.get("unit"),
+        )
         await self._remember(
             f"Work order {wo_id} ({'EMERGENCY' if urgent else 'routine'}): {summary}"
         )

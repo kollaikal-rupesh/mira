@@ -6,14 +6,16 @@ import type { AppConfig } from '@/app-config';
 import { CallLogsView } from '@/components/app/call-logs-view';
 import { KnowledgeView } from '@/components/app/knowledge-view';
 import { ViewController } from '@/components/app/view-controller';
+import { WorkOrdersView } from '@/components/app/work-orders-view';
 import { useMossContextEvents } from '@/hooks/useMossContextEvents';
 import { cn } from '@/lib/shadcn/utils';
 
-type View = 'call' | 'logs' | 'kb';
+type View = 'call' | 'logs' | 'orders' | 'kb';
 
 const NAV: { key: View; label: string }[] = [
   { key: 'call', label: 'Call' },
   { key: 'logs', label: 'Call Logs' },
+  { key: 'orders', label: 'Work Orders' },
   { key: 'kb', label: 'Knowledge' },
 ];
 
@@ -85,6 +87,11 @@ export function Dashboard({ appConfig }: DashboardProps) {
         {view === 'logs' && (
           <div className="h-svh overflow-y-auto">
             <CallLogsView liveEvents={liveEvents} />
+          </div>
+        )}
+        {view === 'orders' && (
+          <div className="h-svh overflow-y-auto">
+            <WorkOrdersView />
           </div>
         )}
         {view === 'kb' && (

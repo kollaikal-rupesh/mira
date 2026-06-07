@@ -11,6 +11,9 @@ KMS
 .pytest_cache
 .ruff_cache
 
+# Local work-order log (runtime data; see src/work_orders.py)
+work_orders.json
+
 # Claude Code
 .claude/settings.local.json
 .claude/worktrees/

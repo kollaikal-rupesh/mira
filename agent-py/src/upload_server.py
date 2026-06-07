@@ -35,6 +35,9 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from moss import DocumentInfo, MossClient, QueryOptions
 from pypdf import PdfReader
 
+from work_orders import list_work_orders, record_work_order
+from work_orders import new_id as work_orders_new_id
+
 AGENT_DIR = Path(__file__).resolve().parent.parent
 KNOWLEDGE_PATH = AGENT_DIR / "knowledge.json"
 load_dotenv(AGENT_DIR / ".env.local")
@@ -46,7 +49,9 @@ CHUNK_CHARS = int(os.getenv("UPLOAD_CHUNK_CHARS", "1100"))
 
 # Qwen (same brain as the voice agent) for the iMessage text channel.
 QWEN_API_KEY = os.getenv("QWEN_API_KEY")
-QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope-us.aliyuncs.com/compatible-mode/v1")
+QWEN_BASE_URL = os.getenv(
+    "QWEN_BASE_URL", "https://dashscope-us.aliyuncs.com/compatible-mode/v1"
+)
 QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen-plus")
 
 # Property-manager emergency alerts (outbound iMessage via the Spectrum service).
@@ -60,15 +65,21 @@ async def _alert_pm(body: str) -> bool:
     returns False if no PM number is set or the send is blocked/unreachable."""
     if not PM_PHONE:
         return False
-    headers = {"x-escalate-secret": ESCALATE_SHARED_SECRET} if ESCALATE_SHARED_SECRET else {}
+    headers = (
+        {"x-escalate-secret": ESCALATE_SHARED_SECRET} if ESCALATE_SHARED_SECRET else {}
+    )
     try:
         async with httpx.AsyncClient() as client:
             r = await client.post(
-                ESCALATE_URL, json={"to": PM_PHONE, "body": body}, headers=headers, timeout=20.0
+                ESCALATE_URL,
+                json={"to": PM_PHONE, "body": body},
+                headers=headers,
+                timeout=20.0,
             )
         return r.status_code == 200
     except Exception:
         return False
+
 
 _MIRA_SYS = (
     "You are Mira, a resident-support assistant for a property-management company, "
@@ -235,6 +246,14 @@ async def kb() -> JSONResponse:
     )
 
 
+@app.get("/api/work-orders")
+async def work_orders() -> JSONResponse:
+    """List maintenance work orders Mira has opened — over the phone or by text.
+    Backs the dashboard's Work Orders view."""
+    orders = list_work_orders()
+    return JSONResponse({"ok": True, "orders": orders, "count": len(orders)})
+
+
 _ANSWER_SYS = (
     "You are Mira, a resident-support assistant for a property-management company, "
     "replying over text message. Use ONLY the property documents provided to answer "
@@ -299,7 +318,10 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
         resp = await client.chat.completions.create(
             model=QWEN_MODEL,
             messages=[
-                {"role": "system", "content": f"{_ANSWER_SYS}\n\nProperty documents:\n{context}"},
+                {
+                    "role": "system",
+                    "content": f"{_ANSWER_SYS}\n\nProperty documents:\n{context}",
+                },
                 {"role": "user", "content": question},
             ],
             max_tokens=220,
@@ -315,10 +337,19 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
         return JSONResponse({"ok": True, "messages": [raw]})
 
     if parsed.get("is_maintenance"):
-        wo = f"WO-{uuid.uuid4().hex[:6].upper()}"
         issue = (parsed.get("issue") or "your maintenance issue").strip()
         ack = (parsed.get("reply") or "Thanks for letting me know — I'm on it.").strip()
         emergency = str(parsed.get("urgency", "routine")).lower() == "emergency"
+
+        # Log the ticket so it shows up on the dashboard's Work Orders page,
+        # alongside ones opened over the phone.
+        record = record_work_order(
+            wo_id=work_orders_new_id(),
+            summary=issue,
+            urgency="emergency" if emergency else "routine",
+            channel="text",
+        )
+        wo = record["id"]
 
         # Message 1: acknowledgement. Message 2: the ticket (sent separately).
         if emergency:
@@ -354,7 +385,11 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
         )
 
     return JSONResponse(
-        {"ok": True, "messages": [(parsed.get("reply") or raw).strip()], "is_maintenance": False}
+        {
+            "ok": True,
+            "messages": [(parsed.get("reply") or raw).strip()],
+            "is_maintenance": False,
+        }
     )
 
 
