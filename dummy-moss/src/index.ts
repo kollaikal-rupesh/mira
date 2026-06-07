@@ -108,3 +108,40 @@ server.listen(PORT, () => {
     PROJECT_ID && PROJECT_SECRET ? "configured" : "NOT configured (set PROJECT_ID/SECRET in .env)";
   console.log(`Spectrum send service on http://localhost:${PORT} — Photon ${ready}`);
 });
+
+// Inbound channel: residents text Mira's iMessage line and ask anything about
+// the property. Each text is answered by the Python /api/answer endpoint
+// (Moss-grounded, same brain as the voice agent), then replied in-thread.
+const ANSWER_URL = process.env.ANSWER_URL ?? "http://localhost:8080/api/answer";
+
+async function runInbound(): Promise<void> {
+  if (!PROJECT_ID || !PROJECT_SECRET) {
+    console.log("Inbound loop disabled (Photon not configured).");
+    return;
+  }
+  const app = await getApp();
+  console.log("Mira iMessage inbound loop is live — text the line to ask about the property.");
+  for await (const [space, message] of app.messages) {
+    if (message.content.type !== "text") continue;
+    const question = message.content.text;
+    let reply = "Sorry, I couldn't reach the knowledge base just now. Please try again.";
+    try {
+      const res = await fetch(ANSWER_URL, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const data = (await res.json()) as { ok?: boolean; answer?: string };
+      if (data?.ok && data?.answer) reply = data.answer;
+    } catch (err) {
+      console.error("answer fetch failed:", err instanceof Error ? err.message : err);
+    }
+    try {
+      await space.send(reply);
+    } catch (err) {
+      console.error("reply send failed:", err instanceof Error ? err.message : err);
+    }
+  }
+}
+
+runInbound().catch((err) => console.error("inbound loop error:", err));

@@ -27,10 +27,10 @@ from pathlib import Path
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, UploadFile
+from fastapi import Body, FastAPI, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
-from moss import DocumentInfo, MossClient
+from moss import DocumentInfo, MossClient, QueryOptions
 from pypdf import PdfReader
 
 AGENT_DIR = Path(__file__).resolve().parent.parent
@@ -41,6 +41,19 @@ KNOWLEDGE_INDEX = os.getenv("MOSS_INDEX_NAME", "knowledge")
 UPLOAD_PORT = int(os.getenv("UPLOAD_PORT", "8080"))
 # Target chunk size (characters). Chunks split on paragraph/sentence boundaries.
 CHUNK_CHARS = int(os.getenv("UPLOAD_CHUNK_CHARS", "1100"))
+
+# Qwen (same brain as the voice agent) for the iMessage text channel.
+QWEN_API_KEY = os.getenv("QWEN_API_KEY")
+QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope-us.aliyuncs.com/compatible-mode/v1")
+QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen-plus")
+
+_MIRA_SYS = (
+    "You are Mira, a resident-support assistant for a property-management company, "
+    "answering over text message. Answer the resident's question using ONLY the "
+    "property documents provided below; if they don't cover it, say you're not sure "
+    "and suggest contacting the office. Keep replies short and friendly (1-3 "
+    "sentences), plain text, no markdown."
+)
 
 app = FastAPI(title="Mira Knowledge Service")
 # Allow the dashboard (Next dev on any localhost port) to read/upload.
@@ -197,6 +210,50 @@ async def kb() -> JSONResponse:
             "counts": {"seeded": len(seeded), "uploaded": len(_uploaded)},
         }
     )
+
+
+@app.post("/api/answer")
+async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - FastAPI body
+    """Answer a resident's question, grounded in the Moss knowledge base. Used by
+    the iMessage text channel (dummy-moss) so texting Mira gives the same
+    Moss-grounded answers as the voice agent."""
+    question = (payload.get("question") or "").strip()
+    if not question:
+        return JSONResponse({"ok": False, "error": "no question"}, status_code=400)
+
+    # Retrieve grounding from Moss.
+    context = ""
+    try:
+        result = await _moss.query(KNOWLEDGE_INDEX, question, QueryOptions(top_k=3))
+        snippets = [(getattr(d, "text", "") or "").strip() for d in (result.docs or [])]
+        context = "\n\n".join(s for s in snippets if s)
+    except Exception:
+        pass
+
+    # Generate with Qwen (same brain as the voice agent). Without a key, fall back
+    # to the top retrieved snippet so the channel still answers.
+    if not QWEN_API_KEY:
+        ans = context.split(". ", 1)[-1][:300] if context else (
+            "I'm not set up to answer that right now — please contact the office."
+        )
+        return JSONResponse({"ok": True, "answer": ans})
+
+    try:
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(api_key=QWEN_API_KEY, base_url=QWEN_BASE_URL)
+        resp = await client.chat.completions.create(
+            model=QWEN_MODEL,
+            messages=[
+                {"role": "system", "content": f"{_MIRA_SYS}\n\nProperty documents:\n{context}"},
+                {"role": "user", "content": question},
+            ],
+            max_tokens=200,
+            temperature=0.3,
+        )
+        return JSONResponse({"ok": True, "answer": resp.choices[0].message.content.strip()})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)[:200]}, status_code=502)
 
 
 _PAGE = """<!doctype html>
