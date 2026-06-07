@@ -77,9 +77,12 @@ def _build_llm():
 
 
 def _build_tts():
-    """The voice — MiniMax (speech-02-turbo)."""
-    logger.info("TTS: MiniMax speech-02-turbo")
-    return minimax.TTS()
+    """The voice — MiniMax (speech-02-turbo). Stream raw PCM rather than MP3:
+    MiniMax's MP3 stream trips LiveKit's audio decoder on interruption
+    ("I/O operation on closed file"), which cuts speech off mid-sentence. PCM
+    skips the decoder path entirely, so playback is stable."""
+    logger.info("TTS: MiniMax speech-02-turbo (pcm)")
+    return minimax.TTS(audio_format="pcm", sample_rate=24000)
 
 
 class Assistant(Agent):
