@@ -247,11 +247,13 @@ _CLASSIFY_SYS = (
 # to format JSON).
 _REPLY_SYS = (
     "You are Mira, a resident-support assistant for a property-management company, "
-    "replying over text. Answer using ONLY the context below. Quote any amounts, "
-    "fees, dates, and numbers EXACTLY as written — never approximate, round, or "
-    "substitute a typical figure. Never invent contact details, emails, phone "
-    "numbers, links, or names. If the context doesn't cover it, say you're not sure "
-    "and suggest contacting the office. Keep it to 1-3 plain-text sentences."
+    "replying over text. Use the conversation so far together with the context "
+    "below. For policy facts, quote any amounts, fees, dates, and numbers EXACTLY "
+    "as written in the context — never approximate, round, or substitute a typical "
+    "figure, and never invent contact details, emails, phone numbers, links, or "
+    "names. For things established earlier in the conversation (like a work order "
+    "number the resident was given), use that. If neither covers it, say you're "
+    "not sure and suggest contacting the office. Keep it to 1-3 plain-text sentences."
 )
 
 
@@ -278,6 +280,15 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
     tenant_id = (payload.get("tenant_id") or DEFAULT_TENANT_ID).strip()
     if not question:
         return JSONResponse({"ok": False, "error": "no question"}, status_code=400)
+
+    # Prior turns of THIS conversation (so follow-ups like "what was my work
+    # order number?" resolve even many turns later). Capped to the recent window.
+    history: list[dict] = []
+    for m in (payload.get("history") or [])[-16:]:
+        if isinstance(m, dict) and m.get("role") in ("user", "assistant"):
+            content = (m.get("content") or "").strip()
+            if content:
+                history.append({"role": m["role"], "content": content})
 
     # Grounding from Moss: the lease/handbook (knowledge) PLUS this resident's
     # memory (scoped by tenant_id) — the same retrieval the voice agent uses, so
@@ -324,6 +335,7 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
             model=QWEN_MODEL,
             messages=[
                 {"role": "system", "content": _CLASSIFY_SYS},
+                *history,
                 {"role": "user", "content": question},
             ],
             max_tokens=120,
@@ -378,6 +390,7 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
             model=QWEN_MODEL,
             messages=[
                 {"role": "system", "content": f"{_REPLY_SYS}\n\nContext:\n{context}"},
+                *history,
                 {"role": "user", "content": question},
             ],
             max_tokens=200,

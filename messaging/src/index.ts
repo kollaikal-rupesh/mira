@@ -114,6 +114,13 @@ server.listen(PORT, () => {
 // (Moss-grounded, same brain as the voice agent), then replied in-thread.
 const ANSWER_URL = process.env.ANSWER_URL ?? "http://localhost:8080/api/answer";
 
+// Per-conversation chat history (keyed by the iMessage space id), so follow-ups
+// like "what was my work order number?" resolve even many turns later. Kept to
+// the recent window to stay within the model's context.
+type Turn = { role: "user" | "assistant"; content: string };
+const histories = new Map<string, Turn[]>();
+const HISTORY_LIMIT = 16;
+
 async function runInbound(): Promise<void> {
   if (!PROJECT_ID || !PROJECT_SECRET) {
     console.log("Inbound loop disabled (Photon not configured).");
@@ -124,6 +131,9 @@ async function runInbound(): Promise<void> {
   for await (const [space, message] of app.messages) {
     if (message.content.type !== "text") continue;
     const question = message.content.text;
+    const convId = space.id;
+    const history = histories.get(convId) ?? [];
+
     let messages: string[] = [
       "Sorry, I couldn't reach the knowledge base just now. Please try again.",
     ];
@@ -131,7 +141,7 @@ async function runInbound(): Promise<void> {
       const res = await fetch(ANSWER_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, history }),
       });
       const data = (await res.json()) as {
         ok?: boolean;
@@ -143,6 +153,13 @@ async function runInbound(): Promise<void> {
     } catch (err) {
       console.error("answer fetch failed:", err instanceof Error ? err.message : err);
     }
+
+    // Record this turn (the resident's message + Mira's replies) so the next
+    // message in this conversation carries the context forward.
+    history.push({ role: "user", content: question });
+    for (const m of messages) history.push({ role: "assistant", content: m });
+    histories.set(convId, history.slice(-HISTORY_LIMIT));
+
     // Send each message as its own text (ack, then ticket) with a short pause.
     for (let i = 0; i < messages.length; i++) {
       const m = messages[i];
