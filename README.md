@@ -1,275 +1,118 @@
-# Vera — Lab analyzer support agent · LiveKit voice + Moss RAG & memory
+<div align="center">
 
-A voice AI app that pairs the official **[LiveKit](https://livekit.io) Agents** stack with
-**[Moss](https://usemoss.dev)** for retrieval. **Vera** is a hands-free technical-support agent for
-a (fictional) Helix HX-220 hematology analyzer: a lab tech with gloved hands talks to it, and it
-triages the fault code, walks the documented operator fix one step at a time (grounded in the
-service manual via Moss), refuses unsafe service-only repairs, and escalates with a full dossier
-when it can't resolve the fault. See `DEMO.md` and `ARCHITECTURE.md`.
+# 🏠 Mira
 
-Built on the official LiveKit starter templates — `agent-starter-python` and `agent-starter-react`
-— adapted for Moss. The starters are the source of truth for current LiveKit idioms.
+### The AI property manager your residents can **call _or_ text** — and it answers from the actual lease in **under 10 milliseconds.**
 
-## What you get
+**One brain. Two channels. No hold music, no portal, no 9‑to‑5.**
 
-- **Voice agent** (`agent-py/`) — a Python LiveKit agent (`AgentServer` + `@server.rtc_session`)
-  that is a *stateful procedure-execution engine*, not flat Q&A:
-  - `read_instrument` — reads the instrument's EXACT live state (active fault, error log, reagent
-    levels, QC, firmware) — the anti-hallucination tool.
-  - `search_procedures` / `lookup_symptom` — RAG and symptom→code mapping over the **`knowledge`**
-    (service-manual) Moss index.
-  - `start_remediation` / `advance_step` — drive the in-call `RemediationSession` state machine;
-    `start_remediation` is the **safety gate** that refuses service-only faults.
-  - `escalate_to_service` — builds + **iMessages** the escalation dossier via the Photon send service (`dummy-moss/`, `spectrum-ts`).
-  - `recall_history` / `remember_observation` — per-**instrument** maintenance log in the
-    **`memory`** Moss index, scoped by `device_id`.
-- **Frontend** (`frontend/`) — the React/Next.js starter, rebranded for Vera, with a live
-  **Service Manual · Moss Retrieval** panel showing the retrieved chunks, relevance scores, and
-  latency in real time.
-- **Indexer** (`agent-py/src/create_index.py`) — builds both Moss indexes from
-  `agent-py/knowledge.json` (the single source of truth for procedures *and* the state machine).
+`LiveKit` · `Moss` · `Qwen` · `MiniMax` · `Photon` · `Deepgram`
 
-### Only two sets of credentials
+</div>
 
-You need **LiveKit** and **Moss** credentials — nothing else. Speech-to-text, the LLM, and
-text-to-speech all run through **[LiveKit Inference](https://docs.livekit.io/agents/models/)**
-(model strings, billed through LiveKit), so there are **no OpenAI / Deepgram / Cartesia / embedding
-API keys** to manage anywhere in this repo.
+---
 
-## Architecture
+> **Voice was solved. Retrieval was the bottleneck. [Moss](https://usemoss.dev) removed it.**
+> Mira is what you build the moment grounding a *live* conversation becomes free.
+
+## The 10‑second pitch
+
+A resident **calls** Mira or **texts** her. Same assistant, same brain, same knowledge. She answers rent, lease, and maintenance questions **grounded in the building's real documents**, remembers the resident across conversations, and actually **resolves** the issue — opening a maintenance work order and escalating emergencies on the spot.
+
+## Why this couldn't exist until now
+
+Grounding a **voice** conversation means fetching the right lease clause *mid‑sentence*. Every vector DB adds 200–500 ms — enough to break the turn, so most voice agents ship ungrounded and hallucinate. **Moss retrieves in <10 ms**, so Mira grounds **every single turn** without a stutter. That one fact is the entire product.
 
 ```
-  ┌──────────────────────┐         ┌────────────────────────────┐
-  │  Browser frontend     │  WebRTC │   LiveKit Cloud             │
-  │  (Next.js, frontend/) │◀───────▶│   • media transport         │
-  │  • mic / audio         │  data   │   • Inference: STT/LLM/TTS  │
-  │  • Knowledge Matches   │  packets│   • agent dispatch          │
-  └──────────┬───────────┘         └─────────────┬──────────────┘
-             │  POST /api/token                    │ dispatch (agent_name="agent-py",
-             │  → mints lk_moss_user cookie         │            metadata {"user_id": …})
-             │  → stamps {"user_id"} as dispatch    │
-             │     metadata                          ▼
-             │                          ┌────────────────────────────────┐
-             │   moss_context data ◀────│  Python voice agent (Vera)      │
-             └──────── packets ─────────│  (agent-py/, AgentServer)       │
-                                        │  read_instrument · RemediationSession │
-                                        │  search_procedures · escalate   │
-                                        └─────────────┬──────────────────┘
-                                                      │  Moss SDK
-                                                      ▼
-                                        ┌────────────────────────────────┐
-                                        │  Moss                           │
-                                        │  • knowledge (procedures + safety) │
-                                        │  • memory  (per-instrument log)  │
-                                        └────────────────────────────────┘
+Retrieval latency budget:  ████████████████████  ~1 second to first word
+Moss's slice of it:        ▏ <10 ms  (≈1%)  ← no longer the bottleneck
 ```
 
-The frontend's token route (`frontend/app/api/token/route.ts`) sets an httpOnly `lk_moss_user`
-cookie (a random UUID) on first visit and stamps `{"user_id": "<uuid>"}` into the agent's dispatch
-metadata. The agent reads it from `ctx.job.metadata` (accepting a `device_id` key, falling back to
-`user_id`) and uses it to scope the per-instrument maintenance log, so each session keeps its own
-history that persists across reconnects. (Point it at a real instrument serial in production.)
+## What Mira does
 
-## Repository layout
+- 📞 **Call her** — real‑time voice over LiveKit (Qwen brain · MiniMax voice · Deepgram ears), grounded in Moss, replies in well under a second.
+- 💬 **Text her** — iMessage via Photon: *"When's rent due?" "Can I sublet?" "Deposit back?"* → grounded answers, same KB.
+- 📄 **Knows your building** — every answer cited from the **actual lease + handbook**. Drag‑drop a PDF and it's searchable instantly.
+- 🔧 **Resolves, doesn't deflect** — detects a maintenance issue, opens a **work‑order ticket**, confirms by text.
+- 🚨 **Emergencies** — a leak or gas smell triggers **immediate dispatch** + property‑manager escalation, not a 3‑day queue.
+- 🧠 **Remembers** — per‑resident memory that carries across calls *and* texts.
+
+## One brain, two channels
 
 ```
-moss-hacker-starter/
-├── agent-py/                  # Python voice agent (uv-managed)
-│   ├── src/agent.py           #   Vera: state machine + tools, registered as "agent-py"
-│   ├── src/create_index.py    #   builds the knowledge + memory indexes
-│   ├── knowledge.json         #   fault-code procedures + safety docs (single source of truth)
-│   ├── Dockerfile             #   deploy image (CMD: uv run src/agent.py start)
-│   └── .env.local             #   LIVEKIT_* (auto) + MOSS_* (you paste)
-├── frontend/                  # Next.js app (pnpm-managed)
-│   ├── app/api/token/route.ts #   token + dispatch metadata + lk_moss_user cookie
-│   ├── app-config.ts          #   branding + AGENT_NAME wiring
-│   ├── hooks/useMossContextEvents.ts          # parses moss_context data packets
-│   └── components/app/moss-results-panel.tsx  # "Service Manual · Moss Retrieval" UI
-│   └── .env.local             #   LIVEKIT_* + AGENT_NAME=agent-py (no Moss vars)
-└── package.json               # root pnpm orchestrator (scripts below)
+        📞 Voice (web / WebRTC)                 💬 iMessage
+                │                                    │
+          LiveKit Agents                      Photon · Spectrum
+        Deepgram → Qwen → MiniMax              inbound → reply
+                │                                    │
+                └───────────────┬────────────────────┘
+                                ▼
+                   ┌─────────────────────────┐
+                   │   M O S S   (<10 ms)     │   ← the hero
+                   │  lease · handbook · law  │     grounds every turn
+                   │  per‑resident memory     │
+                   └─────────────────────────┘
+                                │
+              answers · work‑order tickets · escalation
 ```
 
-## Prerequisites
+## Every sponsor, load‑bearing — not bolted on
 
-- **Python 3.10+** and **[uv](https://docs.astral.sh/uv/)** (manages the agent's venv).
-- **Node.js 22+** and **[pnpm](https://pnpm.io) 10+**.
-- The **[LiveKit CLI](https://docs.livekit.io/reference/developer-tools/livekit-cli/)** (`lk`),
-  authenticated to a LiveKit Cloud project:
-  ```bash
-  lk cloud auth          # opens a browser to link your project
-  lk project list        # verify a linked project exists
-  ```
-- A **[LiveKit Cloud](https://cloud.livekit.io)** account/project.
-- A **[Moss](https://portal.usemoss.dev)** account (free tier is plenty — see below).
+| Layer | Tech | Why it's here |
+|---|---|---|
+| **Retrieval** | **Moss** 🟢 | The hero. <10 ms grounding on the real lease/handbook — the only reason a voice agent can cite documents mid‑sentence. |
+| **Voice transport + agents** | **LiveKit** | Real‑time WebRTC, turn detection, the agent runtime. |
+| **Brain** | **Qwen** (Alibaba) | The reasoning LLM, via its OpenAI‑compatible endpoint. |
+| **Voice** | **MiniMax** | Expressive, low‑latency TTS (`speech‑02‑turbo`). |
+| **Ears** | **Deepgram** | Streaming STT (`nova‑3`) via LiveKit Inference. |
+| **Messaging** | **Photon / Spectrum** | Native iMessage — residents text Mira and get Moss‑grounded replies. |
 
-> **Never hand-write LiveKit keys.** All LiveKit setup goes through `lk`, and whenever you touch
-> LiveKit code or config, look up the current API first (`lk docs` or the LiveKit Docs MCP).
+> Models are **env‑toggled**: drop the keys and the same agent falls back to LiveKit Inference (Gemini Flash + Cartesia) with zero code changes.
 
-## Setup
+## The dashboard
 
-If you cloned this repo, the two starters and their LiveKit credentials are already in place. If you
-are scaffolding from scratch, the starters are created with the LiveKit CLI:
+A clean operator console (`localhost:3001`):
+- **Call** — talk to Mira live.
+- **Call Logs** — every knowledge lookup Mira made, with the document she grounded on, relevance score, and **Moss latency in ms**.
+- **Knowledge** — browse the lease/handbook and **drag‑drop new documents** straight into the Moss index.
+
+## See it in 90 seconds
+
+1. **Open `localhost:3001` → Call** → *"When is rent due?"* — Mira answers from the lease; the panel shows the Moss hit in single‑digit ms.
+2. **Knowledge tab** → drop in a property handbook PDF → ask about it on the next call. **Bring‑your‑own‑docs, no redeploy.**
+3. **Text the line** → *"There's water leaking under my sink"* → Mira opens **work order WO‑###** and confirms by text.
+4. **Emergency** → *"I smell gas"* → immediate dispatch + property‑manager escalation, with a safety‑first reply.
+
+## Quickstart
 
 ```bash
-lk app create --template agent-starter-python --install --yes agent-py
-lk app create --template agent-starter-react  --install --yes frontend
+pnpm setup            # install all apps + copy .env files
+# fill in: LiveKit + Moss (required); Qwen + MiniMax + Photon (optional, for the full stack)
+pnpm moss:index       # build the knowledge + memory indexes
+pnpm dev              # voice agent + web dashboard + iMessage service
+pnpm moss:upload      # (optional) the drag‑drop document uploader → :8080
 ```
 
-**1. Install dependencies and create `.env.local` files:**
+Only **two** credentials are required to run — **LiveKit** and **Moss**. Everything else (STT/LLM/TTS) runs through LiveKit Inference with no extra keys until you opt into Qwen/MiniMax/Photon.
 
-```bash
-pnpm setup
+## Repo layout
+
+```
+├── agent-py/          # Python voice agent (LiveKit) + Moss tools + the doc/answer service
+│   ├── src/agent.py            # Mira: persona, tools, per‑resident memory, work orders
+│   ├── src/upload_server.py    # KB uploader + /api/answer (Moss‑grounded text brain)
+│   └── knowledge.json          # lease + property handbook (single source of truth)
+├── dummy-moss/        # Photon (Spectrum) iMessage service — inbound Q&A + outbound
+├── frontend/          # Next.js operator dashboard (Call · Call Logs · Knowledge)
+└── DEMO.md · ARCHITECTURE.md   # the story and the design
 ```
 
-This installs the frontend (`pnpm`), syncs the agent (`uv sync`), and copies `.env.example` →
-`.env.local` for each app if missing.
+---
 
-**2. Write LiveKit credentials** into both apps with the CLI (never typed by hand):
+<div align="center">
 
-```bash
-lk app env -w agent-py     # reads agent-py/.env.example → writes agent-py/.env.local
-lk app env -w frontend     # reads frontend/.env.example → writes frontend/.env.local
-```
+**Mira** — call it or text it. It already read the lease.
 
-This populates `LIVEKIT_URL`, `LIVEKIT_API_KEY`, and `LIVEKIT_API_SECRET` in both files. The
-frontend's `AGENT_NAME` is already set to `agent-py` so the browser explicitly dispatches to this
-agent.
+*Built on LiveKit · Moss · Qwen · MiniMax · Photon · Deepgram*
 
-**3. Paste your Moss credentials — the one manual step.** From the
-[Moss portal](https://portal.usemoss.dev), copy your project ID and key into
-`agent-py/.env.local`:
-
-```dotenv
-MOSS_PROJECT_ID=your_moss_project_id
-MOSS_PROJECT_KEY=your_moss_project_key
-# defaults below are fine for this starter:
-MOSS_INDEX_NAME=knowledge
-MOSS_MEMORY_INDEX_NAME=memory
-MOSS_MODEL_ID=moss-minilm
-```
-
-The **frontend needs no Moss variables** — only the agent talks to Moss.
-
-## Build the Moss indexes
-
-```bash
-pnpm moss:index
-```
-
-Runs `agent-py/src/create_index.py`, which creates **both** indexes:
-
-- **`knowledge`** — populated from `agent-py/knowledge.json` (the RAG corpus).
-- **`memory`** — seeded with one placeholder doc so it exists before the first runtime write.
-
-It prints the document counts / job IDs for each. You can confirm the indexes appear in the
-[Moss portal](https://portal.usemoss.dev). (Requires the Moss credentials from setup.)
-
-## Run
-
-Start the agent and the frontend together:
-
-```bash
-pnpm dev
-```
-
-- Frontend: **http://localhost:3000** — click **Start call**, allow the mic, and talk.
-- The agent connects to LiveKit Cloud and waits for the browser to dispatch it.
-
-No-frontend smoke test (talk to the agent in your terminal):
-
-```bash
-pnpm agent:py:console
-```
-
-## Try it — work a fault
-
-With `pnpm dev` running, connect at http://localhost:3000 and:
-
-1. **Triage + grounding** — say *"The analyzer just halted."*
-   Vera calls `read_instrument` (quotes the exact active fault, E-101), then `start_remediation`
-   grounds the procedure via Moss — the **Service Manual · Moss Retrieval** panel fills in with the
-   matched chunks, relevance scores, and latency in ms.
-2. **Walk the fix** — Vera reads the safety note and step one, then waits. Report back
-   (*"done"* / *"the flag cleared"*) and it calls `advance_step` to move on or close the fault,
-   logging the fix to this instrument's history.
-3. **The safety gate** — say *"It's showing E-707."*
-   Vera refuses the unsafe repair (service-only sealed pneumatics) and `escalate_to_service` builds
-   the dossier — every step tried + live instrument state — and iMessages it to the field engineer (Photon).
-
-Because the `lk_moss_user` cookie is httpOnly and long-lived, the per-instrument history persists
-across reloads and reconnects.
-
-## Test & lint
-
-```bash
-pnpm test    # pytest (agent-py)
-pnpm lint    # ruff (agent-py) + next lint (frontend)
-pnpm format  # prettier (frontend) + ruff format (agent-py)
-```
-
-## Deploy
-
-The frontend's `/api/token` route is **development-only** (it throws in production) — deploy it
-behind your own auth before shipping. The agent deploys to **LiveKit Cloud** straight from its
-Dockerfile (`agent-py/Dockerfile`).
-
-> Commands below reflect the current LiveKit CLI flow — re-check with `lk docs` /
-> `lk agent --help` before deploying, as the CLI evolves.
-
-```bash
-cd agent-py
-lk agent create        # first deploy: registers the agent, writes livekit.toml,
-                       #   uploads the build context, builds the Dockerfile image,
-                       #   and deploys it. Dispatch name "agent-py" is preserved.
-```
-
-Your agent needs its environment in the cloud too — set `LIVEKIT_*` and `MOSS_PROJECT_ID` /
-`MOSS_PROJECT_KEY` (plus the `MOSS_*` index names) as deployment
-[secrets](https://docs.livekit.io/deploy/agents/secrets/).
-
-Subsequent updates and monitoring:
-
-```bash
-lk agent deploy        # ship a new version
-lk agent status        # status / replica count
-lk agent logs          # live log tail
-```
-
-See [Agent deployment](https://docs.livekit.io/deploy/agents/quickstart/) and
-[Builds & Dockerfiles](https://docs.livekit.io/deploy/agents/builds/) for details.
-
-## Customize
-
-- **Procedures / knowledge base** — edit `agent-py/knowledge.json`. Fault entries carry
-  `{id, fault_code, severity, category, text, steps, safety, metadata}`; `text`/`metadata` feed
-  Moss, while `fault_code`/`severity`/`steps`/`safety` feed the agent's state machine. Re-run
-  `pnpm moss:index` after editing.
-- **Agent persona / behavior** — edit the instructions and tools in `agent-py/src/agent.py`.
-- **Models** — swap the LiveKit Inference model strings (STT/LLM/TTS) in `agent-py/src/agent.py`.
-- **Branding & visualizer** — edit `frontend/app-config.ts`.
-- **Knowledge Matches UI** — `frontend/components/app/moss-results-panel.tsx` (rendered from
-  `frontend/components/agents-ui/blocks/agent-session-view-01/components/agent-session-block.tsx`).
-
-## Root scripts
-
-| Script | What it does |
-| --- | --- |
-| `pnpm setup` | install frontend + sync agent (`uv`) + copy `.env.local` files |
-| `pnpm moss:index` | build the `knowledge` + `memory` Moss indexes |
-| `pnpm dev` | run agent + frontend together (via `concurrently`) |
-| `pnpm agent:py:console` | terminal smoke test (no frontend) |
-| `pnpm agent:py:start` / `pnpm agent:py:download-files` | prod entry / fetch model assets |
-| `pnpm build` / `pnpm start:frontend` | build / serve the frontend |
-| `pnpm test` / `pnpm lint` / `pnpm format` | tests, lint, format |
-
-## Moss resources
-
-- **LiveKit Integration:** https://docs.moss.dev/docs/integrations/livekit
-- **Portal (get your project ID + key):** https://portal.usemoss.dev
-- **Indexing & retrieval guides:** https://docs.moss.dev/docs
-- **Free tier:** ~**60 voice-minutes/month** and up to **3 indexes** — enough to run this starter
-  end to end (the `knowledge` and `memory` indexes count as 2).
-
-## License
-
-MIT — see [LICENSE](./LICENSE).
+</div>
