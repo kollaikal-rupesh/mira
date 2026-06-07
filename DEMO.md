@@ -1,6 +1,6 @@
 # Vera — the lab analyzer support agent that *gets the instrument back online* (powered by Moss)
 
-**Track:** Support · **Built on:** LiveKit Agents + Moss + Twilio
+**Track:** Support · **Built on:** LiveKit Agents + Moss + Photon (iMessage)
 **Thesis of the hackathon:** voice is solved; retrieval was the bottleneck. **Moss removes it.**
 So we make Moss the hero in a setting where retrieval *being free* changes the
 product: a hands-free voice agent that walks a lab tech through fixing a halted
@@ -28,7 +28,7 @@ hands, busy — talks to it. On a live call it:
 5. **Resolves or escalates**: clears the fault and logs the fix to *this
    instrument's* history (`memory`, scoped by serial), or generates an
    **escalation dossier** (`escalate_to_service`) — every step tried + the live
-   instrument state — and texts it to the service desk.
+   instrument state — and iMessages it to the field engineer (via Photon).
 6. **Shows Moss working live** — every retrieval streams to the frontend panel
    with the chunk text, relevance score, and **latency in ms**.
 
@@ -73,8 +73,9 @@ keeps a tech safe. That's what retrieval being free buys you."*
 pnpm setup                         # installs frontend + agent, copies .env files
 lk app env -w agent-py             # LiveKit creds (or paste into agent-py/.env.local)
 # paste MOSS_PROJECT_ID / MOSS_PROJECT_KEY into agent-py/.env.local
-# (optional, for the escalation text) paste TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN /
-#   TWILIO_FROM_NUMBER / SERVICE_DESK_PHONE into agent-py/.env.local
+# (optional, for the iMessage send) paste PHOTON_PROJECT_ID / PHOTON_PROJECT_SECRET
+#   into frontend/.env.local, and SERVICE_DESK_PHONE / TECH_PHONE (or DEMO_PHONE)
+#   into agent-py/.env.local
 pnpm moss:index                    # builds the `knowledge` (procedures) + `memory` indexes
 pnpm dev                           # agent + frontend on http://localhost:3000
 ```
@@ -89,11 +90,14 @@ Terminal-only smoke test (no frontend): `pnpm agent:py:console`.
 | `agent-py/src/agent.py` | Persona → Vera; added the `RemediationSession` state machine, `MOCK_INSTRUMENTS` telemetry, and tools `read_instrument`, `lookup_symptom`, `start_remediation`, `advance_step`, `escalate_to_service`, plus per-instrument `recall_history` / `remember_observation`. **Safety gate** refuses service-only faults. Kept the live `moss_context` panel intact. |
 | `agent-py/src/create_index.py` | Memory seed scoped by `device_id` (per-instrument). |
 | `agent-py/tests/test_moss.py` | Rewritten: covers retrieval, the state machine, the safety gate, escalation/dossier, and per-instrument memory (offline). |
-| `frontend/` | App branding (Vera / Helix), panel header → "Service Manual · Moss Retrieval", welcome copy. |
+| `frontend/` | App branding (Vera / Helix), panel header → "Service Manual · Moss Retrieval", welcome copy, and a new **`app/api/escalate` route** — the Photon iMessage bridge. |
 
-`escalate_to_service` reuses the Twilio REST path (httpx, markdown-link
-sanitising) to text the dossier; it degrades to reading the summary aloud when
-Twilio isn't configured.
+**Messaging (Photon iMessage):** Photon's send path is TypeScript-only (no
+Python/REST endpoint), so the Python agent POSTs the dossier/receipt to the
+frontend's `/api/escalate` route, which sends it via the `spectrum-ts` SDK. Vera
+iMessages the field engineer the escalation dossier and iMessages the tech a
+resolution receipt; both degrade to reading the message aloud when Photon or a
+recipient isn't configured.
 
 ## Why local-first is the spine here (not a stretch)
 
@@ -111,5 +115,5 @@ synthesis) behind a gateway. See `ARCHITECTURE.md`.
 ```bash
 cd agent-py
 LIVEKIT_API_KEY=devkey LIVEKIT_API_SECRET=devsecret LIVEKIT_URL=ws://localhost:7880 \
-  uv run pytest tests/test_moss.py -q   # offline, no Moss/Twilio creds needed
+  uv run pytest tests/test_moss.py -q   # offline, no Moss/Photon creds needed
 ```

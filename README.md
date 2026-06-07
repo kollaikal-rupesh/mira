@@ -20,7 +20,7 @@ Built on the official LiveKit starter templates — `agent-starter-python` and `
     (service-manual) Moss index.
   - `start_remediation` / `advance_step` — drive the in-call `RemediationSession` state machine;
     `start_remediation` is the **safety gate** that refuses service-only faults.
-  - `escalate_to_service` — builds + texts the escalation dossier.
+  - `escalate_to_service` — builds + **iMessages** the escalation dossier via the Photon bridge (`spectrum-ts`, through the frontend's `/api/escalate` route).
   - `recall_history` / `remember_observation` — per-**instrument** maintenance log in the
     **`memory`** Moss index, scoped by `device_id`.
 - **Frontend** (`frontend/`) — the React/Next.js starter, rebranded for Vera, with a live
@@ -194,7 +194,7 @@ With `pnpm dev` running, connect at http://localhost:3000 and:
    logging the fix to this instrument's history.
 3. **The safety gate** — say *"It's showing E-707."*
    Vera refuses the unsafe repair (service-only sealed pneumatics) and `escalate_to_service` builds
-   the dossier — every step tried + live instrument state — and texts it to the service desk.
+   the dossier — every step tried + live instrument state — and iMessages it to the field engineer (Photon).
 
 Because the `lk_moss_user` cookie is httpOnly and long-lived, the per-instrument history persists
 across reloads and reconnects.

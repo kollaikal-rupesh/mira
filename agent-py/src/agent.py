@@ -474,13 +474,28 @@ class Assistant(Agent):
 
         if fault_cleared:
             session.resolved = True
+            fixing_step = session.current_step
             await self._log_history(
                 f"{session.fault_code} resolved by step {session.step_idx + 1}: "
-                f"{session.current_step}. Tech reported: {outcome}."
+                f"{fixing_step}. Tech reported: {outcome}."
+            )
+            # iMessage the tech a receipt of the fix (rich, blue-bubble channel).
+            inst = _instrument_for(self._device_id)
+            receipt = (
+                f"Helix HX-220 ({inst.get('serial', self._device_id)}): "
+                f"{session.fault_code} resolved. "
+                f"Fix: {fixing_step} Ran QC before loading samples is recommended."
+            )
+            to = os.getenv("TECH_PHONE") or os.getenv("DEMO_PHONE")
+            texted = await self._send_imessage(to, receipt)
+            tail = (
+                " I've texted you a receipt of the fix."
+                if texted
+                else " I've logged the fix to this analyzer's history."
             )
             return (
                 f"That cleared {session.fault_code} — nice work, the instrument should "
-                "be ready to run. I've logged the fix to this analyzer's history. "
+                f"be ready to run.{tail} "
                 "Run a background check or a QC to confirm before you load samples."
             )
 
@@ -507,7 +522,8 @@ class Assistant(Agent):
         """
         inst = _instrument_for(self._device_id)
         dossier = self._build_dossier(inst)
-        sent = await self._send_sms(dossier)
+        to = os.getenv("SERVICE_DESK_PHONE") or os.getenv("DEMO_PHONE")
+        sent = await self._send_imessage(to, dossier)
 
         if self._session is not None:
             self._session.escalated = True
@@ -520,9 +536,9 @@ class Assistant(Agent):
         n_steps = len(self._session.attempts) if self._session else 0
         code = self._session.fault_code if self._session else "the active fault"
         delivery = (
-            "I've sent the dossier to the service desk."
+            "I've messaged the dossier to the field engineer."
             if sent
-            else "I've prepared the dossier for the service desk."
+            else "I've prepared the dossier for the field engineer."
         )
         return (
             f"{delivery} It has the instrument serial, firmware, {code}, the "
@@ -615,20 +631,25 @@ class Assistant(Agent):
         lines.append(f"Temperature: {inst.get('temperature')}")
         return "\n".join(lines)
 
-    async def _send_sms(self, body: str) -> bool:
-        """Text the escalation dossier to the service desk. Returns True if sent.
+    async def _send_imessage(self, to: str | None, body: str) -> bool:
+        """Send an iMessage via the Photon bridge. Returns True if delivered.
 
-        Degrades gracefully (returns False) when Twilio isn't configured, so the
-        agent still reads the dossier summary aloud.
+        Photon's send path is TypeScript-only (no REST send endpoint), so we POST
+        to the Next.js `/api/escalate` route (frontend), which calls the
+        spectrum-ts SDK. Degrades gracefully (returns False) when no recipient is
+        configured or the bridge is unreachable, so the agent still reads the
+        message aloud. Configure with ESCALATE_URL (default localhost:3000) and an
+        optional ESCALATE_SHARED_SECRET that must match the route.
         """
-        account_sid = os.getenv("TWILIO_ACCOUNT_SID")
-        auth_token = os.getenv("TWILIO_AUTH_TOKEN")
-        from_number = os.getenv("TWILIO_FROM_NUMBER") or os.getenv("HELIX_SMS_NUMBER")
-        to_number = os.getenv("SERVICE_DESK_PHONE") or os.getenv("DEMO_PHONE")
-
-        if not account_sid or not auth_token or not from_number or not to_number:
-            logger.info("Twilio not fully configured; dossier not texted")
+        if not to:
+            logger.info("No recipient number configured; iMessage not sent")
             return False
+
+        url = os.getenv("ESCALATE_URL", "http://localhost:3000/api/escalate")
+        headers: dict[str, str] = {}
+        secret = os.getenv("ESCALATE_SHARED_SECRET")
+        if secret:
+            headers["x-escalate-secret"] = secret
 
         clean = (
             re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\2", body)
@@ -636,21 +657,17 @@ class Assistant(Agent):
             .replace("*", "")
         )
         try:
-            url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
             async with httpx.AsyncClient() as client:
                 resp = await client.post(
-                    url,
-                    data={"From": from_number, "To": to_number, "Body": clean},
-                    auth=(account_sid, auth_token),
-                    timeout=30.0,
+                    url, json={"to": to, "body": clean}, headers=headers, timeout=30.0
                 )
-            if resp.status_code == 201:
-                logger.info("Dossier texted to %s", to_number)
+            if resp.status_code == 200:
+                logger.info("iMessage sent to %s", to)
                 return True
-            logger.error("Twilio error %s: %s", resp.status_code, resp.text)
+            logger.error("iMessage bridge error %s: %s", resp.status_code, resp.text)
             return False
         except Exception:
-            logger.exception("send dossier failed")
+            logger.exception("iMessage send failed")
             return False
 
 

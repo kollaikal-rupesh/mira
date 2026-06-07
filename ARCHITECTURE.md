@@ -132,6 +132,7 @@ current build runs everything on LiveKit Inference so it demos out of the box;
 | **Moss** | retrieval everywhere — grounding, symptom map, per-instrument memory (the hero) | core |
 | **Deepgram** | STT (via LiveKit Inference) | core |
 | **Minimax** | M2.7 diagnostic brain + expressive TTS (the local-first story) | core (voice + brain) |
+| **Photon** | iMessage delivery — escalation dossier to the field engineer, resolution receipt to the tech (via the `/api/escalate` bridge) | action layer |
 | **Unsiloed** | parse real service-manual PDFs → `knowledge` index | high-value add |
 | **TrueFoundry** | gateway for two-brain routing, fallback, observability | prize add |
 | **AWS** | deploy the agent worker | optional |
@@ -144,14 +145,17 @@ current build runs everything on LiveKit Inference so it demos out of the box;
 3. ✅ `read_instrument` telemetry (exact-value grounding) + per-instrument memory.
 4. ✅ Offline test suite (retrieval, state machine, safety gate, escalation).
 5. ✅ Frontend rebrand + live Moss panel reused.
+6. ✅ Photon iMessage bridge (`/api/escalate` → `spectrum-ts`): dossier to the
+   field engineer, receipt to the tech. Note: Photon is iMessage-only (no SMS)
+   and TS-only (no Python/REST send), hence the Next.js bridge the agent POSTs to.
 
 **Differentiators (in ROI order):**
-6. **Unsiloed** ingestion: a real analyzer service PDF → `knowledge`, live.
-7. **MiniMax** TTS + **M2.7** brain swap (the local-first pitch made real).
-8. **Two-brain routing** behind TrueFoundry (fast loop + M2.7 triage/dossier).
-9. **Speculative retrieval** on interim transcripts (prefetch the "if this fails"
-   branch while the tech performs the current step).
-10. **Fleet index** for cross-site incident intelligence.
+7. **Unsiloed** ingestion: a real analyzer service PDF → `knowledge`, live.
+8. **MiniMax** TTS + **M2.7** brain swap (the local-first pitch made real).
+9. **Two-brain routing** behind TrueFoundry (fast loop + M2.7 triage/dossier).
+10. **Speculative retrieval** on interim transcripts (prefetch the "if this fails"
+    branch while the tech performs the current step).
+11. **Fleet index** for cross-site incident intelligence.
 
 ## What stays from the starter
 

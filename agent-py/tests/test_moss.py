@@ -236,7 +236,12 @@ async def test_start_remediation_unknown_code_escalates(
     assert "escalat" in result.lower()
 
 
-async def test_advance_step_walks_then_resolves(stub_moss, stub_procedures) -> None:
+async def test_advance_step_walks_then_resolves(
+    stub_moss, stub_procedures, monkeypatch
+) -> None:
+    # No recipient configured -> the resolution receipt path makes no network call.
+    for var in ("SERVICE_DESK_PHONE", "TECH_PHONE", "DEMO_PHONE"):
+        monkeypatch.delenv(var, raising=False)
     assistant = Assistant(device_id=DEVICE_ID)
     await assistant.start_remediation(None, "E-101")
 
@@ -281,28 +286,16 @@ async def test_advance_step_without_session_guides_user(stub_moss) -> None:
 # --- Escalation dossier -------------------------------------------------------
 
 
-async def test_escalate_builds_dossier_and_degrades_without_twilio(
+async def test_escalate_builds_dossier_and_degrades_without_recipient(
     stub_moss, monkeypatch
 ) -> None:
-    for var in (
-        "TWILIO_ACCOUNT_SID",
-        "TWILIO_AUTH_TOKEN",
-        "TWILIO_FROM_NUMBER",
-        "HELIX_SMS_NUMBER",
-        "SERVICE_DESK_PHONE",
-        "DEMO_PHONE",
-    ):
+    # No recipient configured -> the bridge isn't called and escalate degrades.
+    for var in ("SERVICE_DESK_PHONE", "TECH_PHONE", "DEMO_PHONE"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(
         agent_module,
         "MOCK_INSTRUMENTS",
-        {
-            DEVICE_ID: {
-                "model": "Helix HX-220",
-                "serial": DEVICE_ID,
-                "firmware": "4.2.1",
-            }
-        },
+        {DEVICE_ID: {"model": "Helix HX-220", "serial": DEVICE_ID, "firmware": "4.2.1"}},
     )
     assistant = Assistant(device_id=DEVICE_ID)
     assistant._session = RemediationSession(
@@ -316,7 +309,7 @@ async def test_escalate_builds_dossier_and_degrades_without_twilio(
 
     result = await assistant.escalate_to_service(None)
 
-    # Without Twilio it prepares (does not claim to send) and reads a summary.
+    # Without a recipient it prepares (does not claim to send) and reads a summary.
     assert "prepared" in result.lower()
     assert "E-101" in result
     assert assistant._session.escalated is True
@@ -328,29 +321,20 @@ async def test_escalate_builds_dossier_and_degrades_without_twilio(
     assert DEVICE_ID in dossier
 
 
-async def test_escalate_sends_dossier_when_twilio_configured(
-    stub_moss, monkeypatch
-) -> None:
-    monkeypatch.setenv("TWILIO_ACCOUNT_SID", "ACtest")
-    monkeypatch.setenv("TWILIO_AUTH_TOKEN", "tok")
-    monkeypatch.setenv("TWILIO_FROM_NUMBER", "+15550001111")
+async def test_escalate_sends_dossier_via_imessage_bridge(stub_moss, monkeypatch) -> None:
     monkeypatch.setenv("SERVICE_DESK_PHONE", "+15552223333")
+    monkeypatch.setenv("ESCALATE_URL", "http://localhost:3000/api/escalate")
+    monkeypatch.setenv("ESCALATE_SHARED_SECRET", "s3cret")
     monkeypatch.setattr(
         agent_module,
         "MOCK_INSTRUMENTS",
-        {
-            DEVICE_ID: {
-                "model": "Helix HX-220",
-                "serial": DEVICE_ID,
-                "firmware": "4.2.1",
-            }
-        },
+        {DEVICE_ID: {"model": "Helix HX-220", "serial": DEVICE_ID, "firmware": "4.2.1"}},
     )
 
     sent: dict = {}
 
     class _FakeResponse:
-        status_code = 201
+        status_code = 200
         text = "ok"
 
     class _FakeAsyncClient:
@@ -363,9 +347,10 @@ async def test_escalate_sends_dossier_when_twilio_configured(
         async def __aexit__(self, *a):
             return False
 
-        async def post(self, url, data=None, auth=None, timeout=None):
-            sent["data"] = data
-            sent["auth"] = auth
+        async def post(self, url, json=None, headers=None, timeout=None):
+            sent["url"] = url
+            sent["json"] = json
+            sent["headers"] = headers
             return _FakeResponse()
 
     assistant = Assistant(device_id=DEVICE_ID)
@@ -380,11 +365,12 @@ async def test_escalate_sends_dossier_when_twilio_configured(
 
     result = await assistant.escalate_to_service(None)
 
-    assert "sent" in result.lower()
-    assert sent["data"]["To"] == "+15552223333"
-    assert sent["data"]["From"] == "+15550001111"
-    assert "E-707" in sent["data"]["Body"]
-    assert sent["auth"] == ("ACtest", "tok")
+    # POSTs the dossier to the Next.js iMessage bridge with the recipient + secret.
+    assert "messaged" in result.lower()
+    assert sent["url"].endswith("/api/escalate")
+    assert sent["json"]["to"] == "+15552223333"
+    assert "E-707" in sent["json"]["body"]
+    assert sent["headers"]["x-escalate-secret"] == "s3cret"
 
 
 # --- Per-instrument memory ----------------------------------------------------
