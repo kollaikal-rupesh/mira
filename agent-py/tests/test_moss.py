@@ -109,7 +109,7 @@ async def test_search_knowledge_handles_no_results(stub_moss) -> None:
 async def test_lookup_resident_quotes_exact_figures(stub_moss, monkeypatch) -> None:
     monkeypatch.setattr(
         agent_module,
-        "MOCK_TENANTS",
+        "RESIDENTS",
         {
             TENANT_ID: {
                 "name": "Sam Carter",
@@ -136,7 +136,7 @@ async def test_lookup_resident_quotes_exact_figures(stub_moss, monkeypatch) -> N
 
 
 async def test_lookup_resident_handles_unknown(stub_moss, monkeypatch) -> None:
-    monkeypatch.setattr(agent_module, "MOCK_TENANTS", {})
+    monkeypatch.setattr(agent_module, "RESIDENTS", {})
     assistant = Assistant(tenant_id="nobody")
     result = await assistant.lookup_resident(None)
     assert "couldn't find an account" in result.lower()
@@ -191,7 +191,7 @@ async def test_create_work_order_degrades_without_recipient(
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(
         agent_module,
-        "MOCK_TENANTS",
+        "RESIDENTS",
         {TENANT_ID: {"name": "Sam", "unit": "Unit 2A"}},
     )
     assistant = Assistant(tenant_id=TENANT_ID)
@@ -214,7 +214,7 @@ async def test_create_work_order_emergency_texts_via_bridge(
     monkeypatch.setenv("ESCALATE_SHARED_SECRET", "s3cret")
     monkeypatch.setattr(
         agent_module,
-        "MOCK_TENANTS",
+        "RESIDENTS",
         {TENANT_ID: {"name": "Sam", "unit": "Unit 2A, 10 Oak Ave"}},
     )
 

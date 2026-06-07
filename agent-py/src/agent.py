@@ -41,11 +41,11 @@ MEMORY_INDEX = os.getenv("MOSS_MEMORY_INDEX_NAME", "memory")
 # mode). The frontend provides a per-browser id via dispatch metadata.
 DEFAULT_TENANT_ID = "tenant_1"
 
-# Mock resident system of record. In production this is your property-management
-# platform (rent ledger, lease terms, unit). Here it stands in so the agent can
-# quote EXACT figures (rent, balance, dates) and never hallucinate money. Keyed
-# by tenant_id so lookups are scoped to the caller, like Moss memory.
-MOCK_TENANTS: dict[str, dict] = {
+# Resident system of record — the property-management data layer (rent ledger,
+# lease terms, unit). Mira reads it to quote EXACT figures (rent, balance, dates)
+# and never hallucinate money. Keyed by tenant_id so lookups are scoped to the
+# caller, like Moss memory. Point this at your PMS to go live.
+RESIDENTS: dict[str, dict] = {
     "tenant_1": {
         "name": "Jordan Reyes",
         "unit": "Unit 4B, 220 Maple Street",
@@ -63,36 +63,23 @@ MOCK_TENANTS: dict[str, dict] = {
 
 def _tenant_for(tenant_id: str) -> dict:
     """Return the resident's account record, or a safe empty default."""
-    return MOCK_TENANTS.get(tenant_id, MOCK_TENANTS.get(DEFAULT_TENANT_ID, {}))
+    return RESIDENTS.get(tenant_id, RESIDENTS.get(DEFAULT_TENANT_ID, {}))
 
 
 def _build_llm():
-    """The brain. If QWEN_API_KEY is set, use Qwen via its OpenAI-compatible
-    endpoint (DashScope); otherwise the fast LiveKit Inference model (no key).
-    Note: Qwen is an external hop, so it trades some latency for the open model.
-    """
-    qwen_key = os.getenv("QWEN_API_KEY")
-    if qwen_key:
-        model = os.getenv("QWEN_MODEL", "qwen-plus")
-        base_url = os.getenv(
-            "QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
-        )
-        logger.info("LLM: Qwen (%s) via %s", model, base_url)
-        return openai.LLM(model=model, api_key=qwen_key, base_url=base_url)
-    logger.info("LLM: LiveKit Inference google/gemini-2.5-flash")
-    return inference.LLM(model="google/gemini-2.5-flash")
+    """The brain — Qwen, via its OpenAI-compatible endpoint (DashScope)."""
+    model = os.getenv("QWEN_MODEL", "qwen-plus")
+    base_url = os.getenv(
+        "QWEN_BASE_URL", "https://dashscope-us.aliyuncs.com/compatible-mode/v1"
+    )
+    logger.info("LLM: Qwen (%s)", model)
+    return openai.LLM(model=model, api_key=os.getenv("QWEN_API_KEY"), base_url=base_url)
 
 
 def _build_tts():
-    """The voice. If MINIMAX_API_KEY is set, use MiniMax TTS (speech-02-turbo,
-    expressive); otherwise Cartesia via LiveKit Inference (no key)."""
-    if os.getenv("MINIMAX_API_KEY"):
-        logger.info("TTS: MiniMax speech-02-turbo")
-        return minimax.TTS()
-    logger.info("TTS: LiveKit Inference cartesia/sonic-3")
-    return inference.TTS(
-        model="cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
-    )
+    """The voice — MiniMax (speech-02-turbo)."""
+    logger.info("TTS: MiniMax speech-02-turbo")
+    return minimax.TTS()
 
 
 class Assistant(Agent):
@@ -103,8 +90,7 @@ class Assistant(Agent):
 
     def __init__(self, *, room=None, tenant_id: str = DEFAULT_TENANT_ID) -> None:
         super().__init__(
-            # The brain: Qwen if QWEN_API_KEY is set, else fast Inference Gemini.
-            # See _build_llm. https://docs.livekit.io/agents/models/llm/
+            # The brain — Qwen. See _build_llm.
             llm=_build_llm(),
             instructions=textwrap.dedent(
                 """\
@@ -434,10 +420,9 @@ async def my_agent(ctx: JobContext):
             logger.warning("ctx.job.metadata was not valid JSON; using default tenant")
 
     session = AgentSession(
-        # STT — the agent's ears. See https://docs.livekit.io/agents/models/stt/
+        # STT — Deepgram nova-3. See https://docs.livekit.io/agents/models/stt/
         stt=inference.STT(model="deepgram/nova-3", language="multi"),
-        # TTS — MiniMax if MINIMAX_API_KEY is set, else Cartesia via Inference.
-        # See _build_tts. https://docs.livekit.io/agents/models/tts/
+        # TTS — MiniMax. See _build_tts.
         tts=_build_tts(),
         # Hands-free turn-taking.
         turn_detection=MultilingualModel(),

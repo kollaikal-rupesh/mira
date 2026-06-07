@@ -67,8 +67,6 @@ Moss's slice of it:        ▏ <10 ms  (≈1%)  ← no longer the bottleneck
 | **Ears** | **Deepgram** | Streaming STT (`nova‑3`) via LiveKit Inference. |
 | **Messaging** | **Photon / Spectrum** | Native iMessage — residents text Mira and get Moss‑grounded replies. |
 
-> Models are **env‑toggled**: drop the keys and the same agent falls back to LiveKit Inference (Gemini Flash + Cartesia) with zero code changes.
-
 ## The dashboard
 
 A clean operator console (`localhost:3001`):
@@ -87,13 +85,11 @@ A clean operator console (`localhost:3001`):
 
 ```bash
 pnpm setup            # install all apps + copy .env files
-# fill in: LiveKit + Moss (required); Qwen + MiniMax + Photon (optional, for the full stack)
+# fill in your LiveKit, Moss, Qwen, MiniMax, and Photon keys (see .env.example)
 pnpm moss:index       # build the knowledge + memory indexes
 pnpm dev              # voice agent + web dashboard + iMessage service
 pnpm moss:upload      # (optional) the drag‑drop document uploader → :8080
 ```
-
-Only **two** credentials are required to run — **LiveKit** and **Moss**. Everything else (STT/LLM/TTS) runs through LiveKit Inference with no extra keys until you opt into Qwen/MiniMax/Photon.
 
 ## Repo layout
 

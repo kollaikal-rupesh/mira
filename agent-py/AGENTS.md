@@ -50,7 +50,7 @@ The per-resident `tenant_id` is parsed from `ctx.job.metadata` (it accepts `tena
 
 ### Models
 
-STT/LLM/TTS are env-toggled in `src/agent.py`: with `QWEN_API_KEY` / `MINIMAX_API_KEY` set, the brain is **Qwen** and the voice is **MiniMax**; otherwise both fall back to LiveKit Inference (Gemini Flash + Cartesia). STT is Deepgram via LiveKit Inference throughout.
+Set in `src/agent.py`: the brain is **Qwen** (`_build_llm`, via its OpenAI-compatible endpoint), the voice is **MiniMax** (`_build_tts`), and STT is **Deepgram nova-3** via LiveKit Inference. Configure with `QWEN_*` / `MINIMAX_API_KEY` in `.env.local`.
 
 ## LiveKit Documentation
 
