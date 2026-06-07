@@ -323,7 +323,7 @@ async def test_escalate_builds_dossier_and_degrades_without_recipient(
 
 async def test_escalate_sends_dossier_via_imessage_bridge(stub_moss, monkeypatch) -> None:
     monkeypatch.setenv("SERVICE_DESK_PHONE", "+15552223333")
-    monkeypatch.setenv("ESCALATE_URL", "http://localhost:3000/api/escalate")
+    monkeypatch.setenv("ESCALATE_URL", "http://localhost:8787/send")
     monkeypatch.setenv("ESCALATE_SHARED_SECRET", "s3cret")
     monkeypatch.setattr(
         agent_module,
@@ -365,9 +365,9 @@ async def test_escalate_sends_dossier_via_imessage_bridge(stub_moss, monkeypatch
 
     result = await assistant.escalate_to_service(None)
 
-    # POSTs the dossier to the Next.js iMessage bridge with the recipient + secret.
+    # POSTs the dossier to the Spectrum iMessage send service with recipient + secret.
     assert "messaged" in result.lower()
-    assert sent["url"].endswith("/api/escalate")
+    assert sent["url"].endswith("/send")
     assert sent["json"]["to"] == "+15552223333"
     assert "E-707" in sent["json"]["body"]
     assert sent["headers"]["x-escalate-secret"] == "s3cret"

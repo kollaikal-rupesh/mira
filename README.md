@@ -20,7 +20,7 @@ Built on the official LiveKit starter templates — `agent-starter-python` and `
     (service-manual) Moss index.
   - `start_remediation` / `advance_step` — drive the in-call `RemediationSession` state machine;
     `start_remediation` is the **safety gate** that refuses service-only faults.
-  - `escalate_to_service` — builds + **iMessages** the escalation dossier via the Photon bridge (`spectrum-ts`, through the frontend's `/api/escalate` route).
+  - `escalate_to_service` — builds + **iMessages** the escalation dossier via the Photon send service (`dummy-moss/`, `spectrum-ts`).
   - `recall_history` / `remember_observation` — per-**instrument** maintenance log in the
     **`memory`** Moss index, scoped by `device_id`.
 - **Frontend** (`frontend/`) — the React/Next.js starter, rebranded for Vera, with a live

@@ -73,9 +73,9 @@ keeps a tech safe. That's what retrieval being free buys you."*
 pnpm setup                         # installs frontend + agent, copies .env files
 lk app env -w agent-py             # LiveKit creds (or paste into agent-py/.env.local)
 # paste MOSS_PROJECT_ID / MOSS_PROJECT_KEY into agent-py/.env.local
-# (optional, for the iMessage send) paste PHOTON_PROJECT_ID / PHOTON_PROJECT_SECRET
-#   into frontend/.env.local, and SERVICE_DESK_PHONE / TECH_PHONE (or DEMO_PHONE)
-#   into agent-py/.env.local
+# (optional, for the iMessage send) paste PROJECT_ID / PROJECT_SECRET into
+#   dummy-moss/.env, and SERVICE_DESK_PHONE / TECH_PHONE (or DEMO_PHONE) into
+#   agent-py/.env.local
 pnpm moss:index                    # builds the `knowledge` (procedures) + `memory` indexes
 pnpm dev                           # agent + frontend on http://localhost:3000
 ```
@@ -90,12 +90,13 @@ Terminal-only smoke test (no frontend): `pnpm agent:py:console`.
 | `agent-py/src/agent.py` | Persona → Vera; added the `RemediationSession` state machine, `MOCK_INSTRUMENTS` telemetry, and tools `read_instrument`, `lookup_symptom`, `start_remediation`, `advance_step`, `escalate_to_service`, plus per-instrument `recall_history` / `remember_observation`. **Safety gate** refuses service-only faults. Kept the live `moss_context` panel intact. |
 | `agent-py/src/create_index.py` | Memory seed scoped by `device_id` (per-instrument). |
 | `agent-py/tests/test_moss.py` | Rewritten: covers retrieval, the state machine, the safety gate, escalation/dossier, and per-instrument memory (offline). |
-| `frontend/` | App branding (Vera / Helix), panel header → "Service Manual · Moss Retrieval", welcome copy, and a new **`app/api/escalate` route** — the Photon iMessage bridge. |
+| `frontend/` | App branding (Vera / Helix), panel header → "Service Manual · Moss Retrieval", welcome copy. |
+| `dummy-moss/` | **New Spectrum (Photon) send service** — outbound iMessage on `localhost:8787/send`, scaffolded via `create-spectrum-project` and adapted into an HTTP send endpoint. |
 
 **Messaging (Photon iMessage):** Photon's send path is TypeScript-only (no
-Python/REST endpoint), so the Python agent POSTs the dossier/receipt to the
-frontend's `/api/escalate` route, which sends it via the `spectrum-ts` SDK. Vera
-iMessages the field engineer the escalation dossier and iMessages the tech a
+Python/REST endpoint), so the Python agent POSTs `{to, body}` to the standalone
+Spectrum send service (`dummy-moss/`), which sends it via the `spectrum-ts` SDK.
+Vera iMessages the field engineer the escalation dossier and iMessages the tech a
 resolution receipt; both degrade to reading the message aloud when Photon or a
 recipient isn't configured.
 

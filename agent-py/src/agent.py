@@ -635,17 +635,17 @@ class Assistant(Agent):
         """Send an iMessage via the Photon bridge. Returns True if delivered.
 
         Photon's send path is TypeScript-only (no REST send endpoint), so we POST
-        to the Next.js `/api/escalate` route (frontend), which calls the
-        spectrum-ts SDK. Degrades gracefully (returns False) when no recipient is
-        configured or the bridge is unreachable, so the agent still reads the
-        message aloud. Configure with ESCALATE_URL (default localhost:3000) and an
-        optional ESCALATE_SHARED_SECRET that must match the route.
+        to the Spectrum send service (`dummy-moss/`, default localhost:8787/send),
+        which calls the spectrum-ts SDK. Degrades gracefully (returns False) when
+        no recipient is configured or the service is unreachable, so the agent
+        still reads the message aloud. Configure with ESCALATE_URL and an optional
+        ESCALATE_SHARED_SECRET that must match the service.
         """
         if not to:
             logger.info("No recipient number configured; iMessage not sent")
             return False
 
-        url = os.getenv("ESCALATE_URL", "http://localhost:3000/api/escalate")
+        url = os.getenv("ESCALATE_URL", "http://localhost:8787/send")
         headers: dict[str, str] = {}
         secret = os.getenv("ESCALATE_SHARED_SECRET")
         if secret:

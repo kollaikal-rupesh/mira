@@ -132,7 +132,7 @@ current build runs everything on LiveKit Inference so it demos out of the box;
 | **Moss** | retrieval everywhere — grounding, symptom map, per-instrument memory (the hero) | core |
 | **Deepgram** | STT (via LiveKit Inference) | core |
 | **Minimax** | M2.7 diagnostic brain + expressive TTS (the local-first story) | core (voice + brain) |
-| **Photon** | iMessage delivery — escalation dossier to the field engineer, resolution receipt to the tech (via the `/api/escalate` bridge) | action layer |
+| **Photon** | iMessage delivery — escalation dossier to the field engineer, resolution receipt to the tech (via the `dummy-moss/` Spectrum send service) | action layer |
 | **Unsiloed** | parse real service-manual PDFs → `knowledge` index | high-value add |
 | **TrueFoundry** | gateway for two-brain routing, fallback, observability | prize add |
 | **AWS** | deploy the agent worker | optional |
@@ -145,9 +145,10 @@ current build runs everything on LiveKit Inference so it demos out of the box;
 3. ✅ `read_instrument` telemetry (exact-value grounding) + per-instrument memory.
 4. ✅ Offline test suite (retrieval, state machine, safety gate, escalation).
 5. ✅ Frontend rebrand + live Moss panel reused.
-6. ✅ Photon iMessage bridge (`/api/escalate` → `spectrum-ts`): dossier to the
-   field engineer, receipt to the tech. Note: Photon is iMessage-only (no SMS)
-   and TS-only (no Python/REST send), hence the Next.js bridge the agent POSTs to.
+6. ✅ Photon iMessage send service (`dummy-moss/`, Spectrum + `spectrum-ts`):
+   the agent POSTs `{to, body}` to `localhost:8787/send`; dossier to the field
+   engineer, receipt to the tech. Note: Photon is iMessage-only (no SMS) and
+   TS-only (no Python/REST send), hence the standalone Node send service.
 
 **Differentiators (in ROI order):**
 7. **Unsiloed** ingestion: a real analyzer service PDF → `knowledge`, live.
