@@ -83,5 +83,10 @@
     "id": "kb-after-hours-utility-outage",
     "text": "Q: The power, water, or heat went out after hours. A: First check whether it affects just your unit or the whole building, and check your breaker panel for a tripped breaker. A building-wide outage is often a utility-company issue; report it and management will coordinate with the provider. Loss of heat in freezing weather, no running water, or a full power outage in your unit is treated as an after-hours emergency and a technician is dispatched right away.",
     "metadata": { "category": "after_hours", "topic": "utility_outage" }
+  },
+  {
+    "id": "kb-mold",
+    "text": "Q: There is mold in my apartment, what should I do? A: First ask ONE clarifying question to size it up: roughly how large is the affected area — smaller or larger than about one square foot (a sheet of paper) — and what surface is it on? For a SMALL patch (under about one square foot) on a hard, non-porous surface like tile, grout, or a painted wall, the resident can usually handle it: put on gloves, wipe the area with a mix of dish soap and warm water (or a solution of one part bleach to ten parts water on non-porous surfaces only), dry it completely, then keep the area dry and improve airflow by running the bathroom or kitchen fan and reducing humidity. Tell them to follow up if it comes back. If the resident says that remedy did not work, or the mold is larger than about one square foot, keeps returning, is on porous material like drywall or carpet, or there are health concerns, do NOT have them keep cleaning it — create a maintenance work order and dispatch the on-call team, which is available 24/7 including overnight, because persistent or spreading mold is a health and habitability issue.",
+    "metadata": { "category": "maintenance", "topic": "mold" }
   }
 ]

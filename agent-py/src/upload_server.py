@@ -239,7 +239,12 @@ _CLASSIFY_SYS = (
     '"urgency": "emergency" or "routine", "ack": "<one short, warm acknowledgement '
     'sentence — no facts, no ticket number>"}\n'
     "Emergency = a major leak or flooding, no heat in cold weather, a gas smell, no "
-    "power, or a lockout."
+    "power, or a lockout.\n"
+    "REMEDY-FIRST issues (like mold or mildew) have a self-fix to try first. If the "
+    "resident reports one for the FIRST time and has NOT said a fix failed, set "
+    "is_maintenance=false (we'll walk them through the remedy). Set is_maintenance="
+    "true once they say the remedy did not work, it's large/spreading, or it's on "
+    "porous material — and treat that escalated case as urgency=emergency (on-call)."
 )
 
 # Step 2 — answer a question, grounded. Kept separate from classification so the
@@ -254,8 +259,12 @@ _REPLY_SYS = (
     "the context, do NOT make one up — instead tell the resident to reply here or "
     "use the resident portal. Never invent names or amounts either. For things "
     "established earlier in the conversation (like a work order number the resident "
-    "was given), use that. If neither covers it, say you're not sure and to contact "
-    "the office. Keep it to 1-3 plain-text sentences."
+    "was given), use that. If the context gives a step-by-step procedure or a "
+    "remedy to try first (for example for mold), FOLLOW it: ask the one clarifying "
+    "question it specifies, then give the self-remedy. Do NOT skip ahead to logging "
+    "a work order, and do NOT promise to create one — a work order is only created "
+    "when the resident says the remedy failed. If neither covers it, say you're not "
+    "sure and to contact the office. Keep it to 1-3 plain-text sentences."
 )
 
 
@@ -365,9 +374,9 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
                 else "I'm escalating this to the property manager."
             )
             ticket = (
-                f"I've logged emergency work order {wo} for {issue}. A technician is being "
-                f"dispatched right now — {pm_line} If anyone is in danger or you smell gas, "
-                "call 911 first."
+                f"I've logged emergency work order {wo} for {issue}. Our on-call team is being "
+                f"dispatched right now — they're available 24/7, including overnight — and "
+                f"{pm_line} If this is ever life-threatening (or you smell gas), call 911 first."
             )
         else:
             ticket = (
