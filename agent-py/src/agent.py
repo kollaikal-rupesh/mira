@@ -73,9 +73,11 @@ class Assistant(Agent):
     def __init__(self, *, room=None, tenant_id: str = DEFAULT_TENANT_ID) -> None:
         super().__init__(
             # The LLM (the agent's brain) runs on LiveKit Inference — no provider
-            # API key required. (Qwen swap is wired here once verified.)
+            # API key required. Gemini Flash for low time-to-first-token (voice
+            # latency). NOTE: Qwen is NOT on Inference — it would need a plugin +
+            # your own key/endpoint, and the external hop tends to ADD latency.
             # See https://docs.livekit.io/agents/models/llm/
-            llm=inference.LLM(model="openai/gpt-5.2-chat-latest"),
+            llm=inference.LLM(model="google/gemini-2.5-flash"),
             instructions=textwrap.dedent(
                 """\
                 You are Mira, a warm, capable resident-support assistant for a
