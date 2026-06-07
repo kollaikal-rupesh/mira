@@ -26,6 +26,7 @@ import re
 import uuid
 from pathlib import Path
 
+import httpx
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import Body, FastAPI, File, UploadFile
@@ -47,6 +48,27 @@ CHUNK_CHARS = int(os.getenv("UPLOAD_CHUNK_CHARS", "1100"))
 QWEN_API_KEY = os.getenv("QWEN_API_KEY")
 QWEN_BASE_URL = os.getenv("QWEN_BASE_URL", "https://dashscope-us.aliyuncs.com/compatible-mode/v1")
 QWEN_MODEL = os.getenv("QWEN_MODEL", "qwen-plus")
+
+# Property-manager emergency alerts (outbound iMessage via the Spectrum service).
+ESCALATE_URL = os.getenv("ESCALATE_URL", "http://localhost:8787/send")
+ESCALATE_SHARED_SECRET = os.getenv("ESCALATE_SHARED_SECRET")
+PM_PHONE = os.getenv("PM_PHONE") or os.getenv("SERVICE_DESK_PHONE")
+
+
+async def _alert_pm(body: str) -> bool:
+    """Notify the property manager via the Spectrum send service. Best-effort:
+    returns False if no PM number is set or the send is blocked/unreachable."""
+    if not PM_PHONE:
+        return False
+    headers = {"x-escalate-secret": ESCALATE_SHARED_SECRET} if ESCALATE_SHARED_SECRET else {}
+    try:
+        async with httpx.AsyncClient() as client:
+            r = await client.post(
+                ESCALATE_URL, json={"to": PM_PHONE, "body": body}, headers=headers, timeout=20.0
+            )
+        return r.status_code == 200
+    except Exception:
+        return False
 
 _MIRA_SYS = (
     "You are Mira, a resident-support assistant for a property-management company, "
@@ -268,7 +290,7 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
             if context
             else "I'm not set up to answer that right now — please contact the office."
         )
-        return JSONResponse({"ok": True, "answer": ans})
+        return JSONResponse({"ok": True, "messages": [ans]})
 
     try:
         from openai import AsyncOpenAI
@@ -290,30 +312,49 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
     parsed = _parse_json_object(raw)
     # If the model didn't return JSON, treat the whole thing as a plain answer.
     if parsed is None:
-        return JSONResponse({"ok": True, "answer": raw})
+        return JSONResponse({"ok": True, "messages": [raw]})
 
     if parsed.get("is_maintenance"):
         wo = f"WO-{uuid.uuid4().hex[:6].upper()}"
         issue = (parsed.get("issue") or "your maintenance issue").strip()
-        ack = (parsed.get("reply") or "Thanks for letting me know.").strip()
+        ack = (parsed.get("reply") or "Thanks for letting me know — I'm on it.").strip()
         emergency = str(parsed.get("urgency", "routine")).lower() == "emergency"
-        eta = (
-            "This may be urgent, so I'm flagging it to the property manager now and a "
-            "technician will be dispatched as soon as possible."
-            if emergency
-            else "I've notified the property manager and a technician will be scheduled "
-            "within two to three business days."
-        )
-        final = (
-            f"{ack} I've created maintenance work order {wo} for {issue}. {eta} "
-            "Reply here with any details or photos."
-        )
+
+        # Message 1: acknowledgement. Message 2: the ticket (sent separately).
+        if emergency:
+            pm_sent = await _alert_pm(
+                f"EMERGENCY at the property — {issue}. Work order {wo}, reported via Mira "
+                "just now. Please dispatch immediately."
+            )
+            pm_line = (
+                "I've alerted the property manager."
+                if pm_sent
+                else "I'm escalating this to the property manager."
+            )
+            ticket = (
+                f"I've logged emergency work order {wo} for {issue}. A technician is being "
+                f"dispatched right now — {pm_line} If anyone is in danger or you smell gas, "
+                "call 911 first."
+            )
+        else:
+            ticket = (
+                f"I've logged work order {wo} for {issue}. The property manager has been "
+                "notified and a technician will be scheduled within two to three business "
+                "days. Reply here with any details or photos."
+            )
+
         return JSONResponse(
-            {"ok": True, "answer": final, "work_order": wo, "is_maintenance": True}
+            {
+                "ok": True,
+                "messages": [ack, ticket],
+                "work_order": wo,
+                "is_maintenance": True,
+                "emergency": emergency,
+            }
         )
 
     return JSONResponse(
-        {"ok": True, "answer": (parsed.get("reply") or raw).strip(), "is_maintenance": False}
+        {"ok": True, "messages": [(parsed.get("reply") or raw).strip()], "is_maintenance": False}
     )
 
 

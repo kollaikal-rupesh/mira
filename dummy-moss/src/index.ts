@@ -124,22 +124,37 @@ async function runInbound(): Promise<void> {
   for await (const [space, message] of app.messages) {
     if (message.content.type !== "text") continue;
     const question = message.content.text;
-    let reply = "Sorry, I couldn't reach the knowledge base just now. Please try again.";
+    let messages: string[] = [
+      "Sorry, I couldn't reach the knowledge base just now. Please try again.",
+    ];
     try {
       const res = await fetch(ANSWER_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question }),
       });
-      const data = (await res.json()) as { ok?: boolean; answer?: string };
-      if (data?.ok && data?.answer) reply = data.answer;
+      const data = (await res.json()) as {
+        ok?: boolean;
+        messages?: string[];
+        answer?: string;
+      };
+      if (data?.ok && data.messages?.length) messages = data.messages;
+      else if (data?.ok && data.answer) messages = [data.answer];
     } catch (err) {
       console.error("answer fetch failed:", err instanceof Error ? err.message : err);
     }
-    try {
-      await space.send(reply);
-    } catch (err) {
-      console.error("reply send failed:", err instanceof Error ? err.message : err);
+    // Send each message as its own text (ack, then ticket) with a short pause.
+    for (let i = 0; i < messages.length; i++) {
+      const m = messages[i];
+      if (!m) continue;
+      try {
+        await space.send(m);
+      } catch (err) {
+        console.error("reply send failed:", err instanceof Error ? err.message : err);
+      }
+      if (i < messages.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 800));
+      }
     }
   }
 }
