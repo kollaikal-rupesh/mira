@@ -6,7 +6,7 @@
 
 **One brain. Two channels. No hold music, no portal, no 9‑to‑5.**
 
-`LiveKit` · `Moss` · `Qwen` · `MiniMax` · `Photon` · `Deepgram`
+`LiveKit` · `Moss` · `Qwen` · `MiniMax` · `Photon`
 
 </div>
 
@@ -30,7 +30,7 @@ Moss's slice of it:        ▏ <10 ms  (≈1%)  ← no longer the bottleneck
 
 ## What Mira does
 
-- 📞 **Call her** — real‑time voice over LiveKit (Qwen brain · MiniMax voice · Deepgram ears), grounded in Moss, replies in well under a second.
+- 📞 **Call her** — real‑time voice over LiveKit (Qwen brain · MiniMax voice), grounded in Moss, replies in well under a second.
 - 💬 **Text her** — iMessage via Photon: *"When's rent due?" "Can I sublet?" "Deposit back?"* → grounded answers, same KB.
 - 📄 **Knows your building** — every answer cited from the **actual lease + handbook**. Drag‑drop a PDF and it's searchable instantly.
 - 🔧 **Resolves, doesn't deflect** — detects a maintenance issue, opens a **work‑order ticket**, confirms by text.
@@ -43,7 +43,7 @@ Moss's slice of it:        ▏ <10 ms  (≈1%)  ← no longer the bottleneck
         📞 Voice (web / WebRTC)                 💬 iMessage
                 │                                    │
           LiveKit Agents                      Photon · Spectrum
-        Deepgram → Qwen → MiniMax              inbound → reply
+         Qwen brain · MiniMax voice            inbound → reply
                 │                                    │
                 └───────────────┬────────────────────┘
                                 ▼
@@ -61,10 +61,9 @@ Moss's slice of it:        ▏ <10 ms  (≈1%)  ← no longer the bottleneck
 | Layer | Tech | Role |
 |---|---|---|
 | **Retrieval** | **Moss** 🟢 | The hero. <10 ms grounding on the real lease/handbook — the only reason a voice agent can cite documents mid‑sentence. |
-| **Voice transport + agents** | **LiveKit** | Real‑time WebRTC, turn detection, the agent runtime. |
+| **Voice transport + agents** | **LiveKit** | Real‑time WebRTC, streaming transcription, turn detection, and the agent runtime (LiveKit Inference). |
 | **Brain** | **Qwen** (Alibaba) | The reasoning LLM, via its OpenAI‑compatible endpoint. |
 | **Voice** | **MiniMax** | Expressive, low‑latency TTS (`speech‑02‑turbo`). |
-| **Ears** | **Deepgram** | Streaming STT (`nova‑3`) via LiveKit Inference. |
 | **Messaging** | **Photon / Spectrum** | Native iMessage — residents text Mira and get Moss‑grounded replies. |
 
 ## The dashboard
@@ -109,6 +108,6 @@ pnpm moss:upload      # (optional) the drag‑drop document uploader → :8080
 
 **Mira** — call it or text it. It already read the lease.
 
-*Built on LiveKit · Moss · Qwen · MiniMax · Photon · Deepgram*
+*Built on LiveKit · Moss · Qwen · MiniMax · Photon*
 
 </div>

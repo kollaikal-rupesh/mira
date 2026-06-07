@@ -11,8 +11,8 @@ Grounding a live conversation means retrieving the right document *while the per
 ```
    📞 Voice (WebRTC)                          💬 iMessage
         │                                          │
-   LiveKit Agents                          Photon / Spectrum
-   Deepgram (STT)                          inbound message loop
+   LiveKit · ASR                           Photon / Spectrum
+        │                                  inbound message loop
         │                                          │
         ▼                                          ▼
    Qwen (LLM)  ◀── grounded context ──┐     /api/answer (Moss + Qwen)
@@ -47,7 +47,7 @@ Every retrieval is published to the dashboard with its matched chunk, relevance 
 
 ## Models (swappable)
 
-The brain and voice are env-toggled. With keys set, Mira runs **Qwen** (LLM) + **MiniMax** (TTS). Without them, the same agent falls back to LiveKit Inference (Gemini Flash + Cartesia) with no code changes — STT is Deepgram via LiveKit throughout.
+Mira runs **Qwen** as the brain (LLM) and **MiniMax** for voice (TTS), with real-time transcription and transport handled by **LiveKit** (LiveKit Inference). Configure with `QWEN_*` / `MINIMAX_API_KEY` in `agent-py/.env.local`.
 
 ## Resolve, don't deflect
 

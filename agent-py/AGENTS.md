@@ -50,7 +50,7 @@ The per-resident `tenant_id` is parsed from `ctx.job.metadata` (it accepts `tena
 
 ### Models
 
-Set in `src/agent.py`: the brain is **Qwen** (`_build_llm`, via its OpenAI-compatible endpoint), the voice is **MiniMax** (`_build_tts`), and STT is **Deepgram nova-3** via LiveKit Inference. Configure with `QWEN_*` / `MINIMAX_API_KEY` in `.env.local`.
+Set in `src/agent.py`, the pipeline is **ASR → brain → TTS**: ASR is streaming speech-to-text via **LiveKit Inference**, the brain is **Qwen** (`_build_llm`, via its OpenAI-compatible endpoint), and the voice is **MiniMax** (`_build_tts`). Configure with `QWEN_*` / `MINIMAX_API_KEY` in `.env.local`.
 
 ## LiveKit Documentation
 

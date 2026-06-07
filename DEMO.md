@@ -35,6 +35,6 @@ Run everything with `pnpm dev`, then open the dashboard at `localhost:3001`.
 | Service | Port | What |
 |---|---|---|
 | Web dashboard | 3001 | Call · Call Logs · Knowledge |
-| Voice agent | — | LiveKit worker (Deepgram → Qwen → MiniMax), grounded in Moss |
+| Voice agent | — | LiveKit worker (Qwen brain · MiniMax voice), grounded in Moss |
 | iMessage | 8787 | Photon/Spectrum inbound + outbound |
 | Doc uploader | 8080 | drag-drop PDFs → Moss index |

@@ -420,9 +420,9 @@ async def my_agent(ctx: JobContext):
             logger.warning("ctx.job.metadata was not valid JSON; using default tenant")
 
     session = AgentSession(
-        # STT — Deepgram nova-3. See https://docs.livekit.io/agents/models/stt/
+        # ASR — streaming speech-to-text via LiveKit Inference.
         stt=inference.STT(model="deepgram/nova-3", language="multi"),
-        # TTS — MiniMax. See _build_tts.
+        # TTS — MiniMax voice. See _build_tts.
         tts=_build_tts(),
         # Hands-free turn-taking.
         turn_detection=MultilingualModel(),
