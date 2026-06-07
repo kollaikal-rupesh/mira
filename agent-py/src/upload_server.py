@@ -18,6 +18,7 @@ PDFs, swap in Unsiloed parsing at the marked point.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import json
 import os
@@ -212,11 +213,41 @@ async def kb() -> JSONResponse:
     )
 
 
+_ANSWER_SYS = (
+    "You are Mira, a resident-support assistant for a property-management company, "
+    "replying over text message. Use ONLY the property documents provided to answer "
+    "questions. Decide whether the resident is REPORTING A MAINTENANCE ISSUE "
+    "(something broken or not working: a leak, no heat or AC, an appliance, plumbing, "
+    "electrical, a lock, pests, etc.) or just ASKING A QUESTION.\n"
+    "Respond with ONLY a JSON object, no markdown and no extra text:\n"
+    '{"is_maintenance": true or false, "issue": "<short description of the problem, '
+    'or empty>", "urgency": "emergency" or "routine", "reply": "<for a question: a '
+    "grounded answer in 1-3 sentences. for maintenance: a brief, warm acknowledgement "
+    '— do NOT invent a ticket number>"}\n'
+    "Treat as emergency: a major leak or flooding, no heat in cold weather, a gas "
+    "smell, no power, or a lockout."
+)
+
+
+def _parse_json_object(text: str) -> dict | None:
+    """Best-effort parse of a JSON object from an LLM reply (strips code fences)."""
+    t = text.strip()
+    if t.startswith("```"):
+        t = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", t).strip()
+    start, end = t.find("{"), t.rfind("}")
+    if start == -1 or end == -1:
+        return None
+    with contextlib.suppress(json.JSONDecodeError):
+        obj = json.loads(t[start : end + 1])
+        return obj if isinstance(obj, dict) else None
+    return None
+
+
 @app.post("/api/answer")
 async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - FastAPI body
-    """Answer a resident's question, grounded in the Moss knowledge base. Used by
-    the iMessage text channel (dummy-moss) so texting Mira gives the same
-    Moss-grounded answers as the voice agent."""
+    """Answer a resident's text, grounded in the Moss knowledge base. Detects
+    maintenance issues and creates a work-order ticket. Used by the iMessage
+    channel (dummy-moss) so texting Mira matches the voice agent."""
     question = (payload.get("question") or "").strip()
     if not question:
         return JSONResponse({"ok": False, "error": "no question"}, status_code=400)
@@ -230,11 +261,12 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
     except Exception:
         pass
 
-    # Generate with Qwen (same brain as the voice agent). Without a key, fall back
-    # to the top retrieved snippet so the channel still answers.
+    # Without a Qwen key, fall back to the top retrieved snippet.
     if not QWEN_API_KEY:
-        ans = context.split(". ", 1)[-1][:300] if context else (
-            "I'm not set up to answer that right now — please contact the office."
+        ans = (
+            context.split(". ", 1)[-1][:300]
+            if context
+            else "I'm not set up to answer that right now — please contact the office."
         )
         return JSONResponse({"ok": True, "answer": ans})
 
@@ -245,15 +277,44 @@ async def answer(payload: dict = Body(...)) -> JSONResponse:  # noqa: B008 - Fas
         resp = await client.chat.completions.create(
             model=QWEN_MODEL,
             messages=[
-                {"role": "system", "content": f"{_MIRA_SYS}\n\nProperty documents:\n{context}"},
+                {"role": "system", "content": f"{_ANSWER_SYS}\n\nProperty documents:\n{context}"},
                 {"role": "user", "content": question},
             ],
-            max_tokens=200,
+            max_tokens=220,
             temperature=0.3,
         )
-        return JSONResponse({"ok": True, "answer": resp.choices[0].message.content.strip()})
+        raw = resp.choices[0].message.content.strip()
     except Exception as exc:
         return JSONResponse({"ok": False, "error": str(exc)[:200]}, status_code=502)
+
+    parsed = _parse_json_object(raw)
+    # If the model didn't return JSON, treat the whole thing as a plain answer.
+    if parsed is None:
+        return JSONResponse({"ok": True, "answer": raw})
+
+    if parsed.get("is_maintenance"):
+        wo = f"WO-{uuid.uuid4().hex[:6].upper()}"
+        issue = (parsed.get("issue") or "your maintenance issue").strip()
+        ack = (parsed.get("reply") or "Thanks for letting me know.").strip()
+        emergency = str(parsed.get("urgency", "routine")).lower() == "emergency"
+        eta = (
+            "This may be urgent, so I'm flagging it to the property manager now and a "
+            "technician will be dispatched as soon as possible."
+            if emergency
+            else "I've notified the property manager and a technician will be scheduled "
+            "within two to three business days."
+        )
+        final = (
+            f"{ack} I've created maintenance work order {wo} for {issue}. {eta} "
+            "Reply here with any details or photos."
+        )
+        return JSONResponse(
+            {"ok": True, "answer": final, "work_order": wo, "is_maintenance": True}
+        )
+
+    return JSONResponse(
+        {"ok": True, "answer": (parsed.get("reply") or raw).strip(), "is_maintenance": False}
+    )
 
 
 _PAGE = """<!doctype html>
