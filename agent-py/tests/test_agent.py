@@ -61,9 +61,8 @@ async def test_grounding() -> None:
         with mock_tools(
             Assistant,
             {
-                "recall_history": lambda: "I don't have any prior history logged for this instrument yet.",
-                "search_procedures": lambda: "No documented procedure was found for that.",
-                "lookup_symptom": lambda: "I couldn't match that symptom to a documented fault code.",
+                "recall_facts": lambda: "I don't have anything remembered for you yet.",
+                "search_knowledge": lambda: "I couldn't find anything about that in the lease or handbook.",
             },
         ):
             # Run an agent turn following the user's request for information the agent has no access to.

@@ -33,10 +33,10 @@ export interface AppConfig {
 }
 
 export const APP_CONFIG_DEFAULTS: AppConfig = {
-  companyName: 'Helix Diagnostics',
-  pageTitle: 'Vera — Helix HX-220 Analyzer Support',
+  companyName: 'Mira',
+  pageTitle: 'Mira — Resident Support',
   pageDescription:
-    'A hands-free voice agent that triages analyzer fault codes, walks the documented operator fix step by step, and escalates with a full dossier when it can’t — grounded in Moss retrieval.',
+    'A voice agent for residents: answers rent, lease, maintenance and deposit questions grounded in your actual lease and property handbook (via Moss), remembers you across calls, and resolves issues by text.',
 
   supportsChatInput: true,
   supportsVideoInput: true,
@@ -47,7 +47,7 @@ export const APP_CONFIG_DEFAULTS: AppConfig = {
   accent: '#002cf2',
   logoDark: '/lk-logo-dark.svg',
   accentDark: '#1fd5f9',
-  startButtonText: 'Start support call',
+  startButtonText: 'Start call',
 
   // optional: audio visualization configuration
   // audioVisualizerType: 'bar',

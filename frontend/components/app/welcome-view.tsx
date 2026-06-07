@@ -34,7 +34,7 @@ export const WelcomeView = ({
         <WelcomeImage />
 
         <p className="text-foreground max-w-prose pt-1 leading-6 font-medium">
-          Analyzer down? Talk to Vera — hands-free fault triage for the Helix HX-220.
+          Talk to Mira — your resident assistant for rent, lease, and maintenance.
         </p>
 
         <Button

@@ -20,7 +20,7 @@ export function MossResultsPanel({
   return (
     <div className={cn('space-y-3', className)} {...props}>
       <h3 className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
-        Service Manual · Moss Retrieval
+        Lease &amp; Handbook · Moss Retrieval
       </h3>
       <div className="space-y-2">
         {events.map(({ id, query, matches, timeTakenMs }) => (

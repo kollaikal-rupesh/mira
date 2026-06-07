@@ -1,9 +1,8 @@
-"""Unit tests for the lab-support agent's Moss-backed tools and state machine.
+"""Unit tests for the Mira resident-support agent's Moss-backed tools.
 
-Unlike the LLM-judged evals in `test_agent.py`, these are deterministic unit
-tests that exercise the tool methods directly. They stub `MossClient` via
-monkeypatch so they run with no Moss credentials and no network access — the
-live, credentialed behavior is validated separately.
+Deterministic unit tests that exercise the tool methods directly. They stub
+`MossClient` via monkeypatch so they run with no Moss credentials and no network
+access.
 """
 
 import json
@@ -11,14 +10,12 @@ import json
 import pytest
 
 import agent as agent_module
-from agent import Assistant, RemediationSession
+from agent import Assistant
 
-DEVICE_ID = "HX220-SN-TEST"
+TENANT_ID = "tenant_42"
 
 
 class _FakeDoc:
-    """Stand-in for a Moss query-result document (`.text/.score/.metadata`)."""
-
     def __init__(self, text: str, score=None, metadata=None) -> None:
         self.text = text
         self.score = score
@@ -26,8 +23,6 @@ class _FakeDoc:
 
 
 class _FakeSearchResult:
-    """Stand-in for a Moss `SearchResult` (`.docs/.time_taken_ms`)."""
-
     def __init__(self, docs, time_taken_ms: float = 12.5) -> None:
         self.docs = docs
         self.time_taken_ms = time_taken_ms
@@ -69,59 +64,29 @@ class _FakeRoom:
 
 @pytest.fixture
 def stub_moss(monkeypatch):
-    """Replace the agent's `MossClient` with the recording fake."""
     monkeypatch.setattr(agent_module, "MossClient", _FakeMossClient)
 
 
-# --- A small, deterministic procedure registry independent of the corpus ------
-
-FIXTURE_PROCEDURES = {
-    "E101": {
-        "fault_code": "E-101",
-        "description": "Aspiration probe clog",
-        "severity": "operator",
-        "steps": [
-            "Put the analyzer in Standby.",
-            "Run Probe Clean.",
-            "Run a Background Check.",
-        ],
-        "safety": "Wear gloves; the probe area is a biohazard zone.",
-    },
-    "E707": {
-        "fault_code": "E-707",
-        "description": "Vacuum pump failure",
-        "severity": "service",
-        "steps": [],
-        "safety": "Service-only. Do not open the instrument.",
-    },
-}
+# --- Grounding ----------------------------------------------------------------
 
 
-@pytest.fixture
-def stub_procedures(monkeypatch):
-    monkeypatch.setattr(agent_module, "PROCEDURES", FIXTURE_PROCEDURES)
-
-
-# --- Retrieval / grounding ----------------------------------------------------
-
-
-async def test_search_procedures_joins_text_and_publishes_context(stub_moss) -> None:
+async def test_search_knowledge_joins_text_and_publishes_context(stub_moss) -> None:
     room = _FakeRoom()
-    assistant = Assistant(room=room, device_id=DEVICE_ID)
+    assistant = Assistant(room=room, tenant_id=TENANT_ID)
     assistant._moss.query_result = _FakeSearchResult(
         [
-            _FakeDoc("Run Probe Clean.", score=0.9, metadata={"fault_code": "E-101"}),
-            _FakeDoc("Inspect the probe tip.", score=0.8),
+            _FakeDoc("Rent is due on the 1st.", score=0.9, metadata={"topic": "rent"}),
+            _FakeDoc("Grace period through the 5th.", score=0.8),
         ],
         time_taken_ms=7.0,
     )
 
-    result = await assistant.search_procedures(None, "probe clog")
+    result = await assistant.search_knowledge(None, "when is rent due?")
 
-    assert result == "Run Probe Clean.\n\nInspect the probe tip."
+    assert result == "Rent is due on the 1st.\n\nGrace period through the 5th."
     index, query, options = assistant._moss.query_calls[0]
     assert index == agent_module.KNOWLEDGE_INDEX
-    assert query == "probe clog"
+    assert query == "when is rent due?"
     assert options.top_k == 3
 
     payload_bytes, reliable = room.local_participant.published[0]
@@ -129,206 +94,128 @@ async def test_search_procedures_joins_text_and_publishes_context(stub_moss) -> 
     data = json.loads(payload_bytes.decode("utf-8"))["data"]
     assert set(data) == {"query", "matches", "time_taken_ms", "timestamp"}
     assert data["time_taken_ms"] == 7.0
-    assert data["matches"][0]["text"] == "Run Probe Clean."
+    assert data["matches"][0]["text"] == "Rent is due on the 1st."
 
 
-async def test_lookup_symptom_returns_candidate_codes(stub_moss) -> None:
-    room = _FakeRoom()
-    assistant = Assistant(room=room, device_id=DEVICE_ID)
-    assistant._moss.query_result = _FakeSearchResult(
-        [
-            _FakeDoc(
-                "Fault E-101 — Aspiration probe clog. Sample not aspirated.",
-                metadata={"fault_code": "E-101"},
-            ),
-            _FakeDoc(
-                "Fault E-312 — Sheath pressure out of range. Unstable counts.",
-                metadata={"fault_code": "E-312"},
-            ),
-        ]
-    )
-
-    result = await assistant.lookup_symptom(None, "it's not drawing sample")
-
-    assert "E-101" in result
-    assert "E-312" in result
-    # Queried the knowledge index and surfaced the panel.
-    assert assistant._moss.query_calls[0][0] == agent_module.KNOWLEDGE_INDEX
-    assert len(room.local_participant.published) == 1
+async def test_search_knowledge_handles_no_results(stub_moss) -> None:
+    assistant = Assistant(tenant_id=TENANT_ID)
+    result = await assistant.search_knowledge(None, "anything")
+    assert "couldn't find" in result.lower()
 
 
-async def test_read_instrument_quotes_exact_state(stub_moss, monkeypatch) -> None:
+# --- Resident account of record (anti-hallucination) --------------------------
+
+
+async def test_lookup_resident_quotes_exact_figures(stub_moss, monkeypatch) -> None:
     monkeypatch.setattr(
         agent_module,
-        "MOCK_INSTRUMENTS",
+        "MOCK_TENANTS",
         {
-            DEVICE_ID: {
-                "model": "Helix HX-220 hematology analyzer",
-                "serial": DEVICE_ID,
-                "firmware": "4.2.1",
-                "active_fault_code": "E-101",
-                "active_fault_desc": "Aspiration probe clog or clot detected",
-                "recent_errors": "E-101 at 09:14",
-                "reagent_levels": "diluent 62 percent",
-                "last_qc": "Level 2 passed at 07:30",
-                "temperature": "37.0 degrees Celsius",
-                "status": "Halted",
+            TENANT_ID: {
+                "name": "Sam Carter",
+                "unit": "Unit 2A, 10 Oak Ave",
+                "monthly_rent": "1,850",
+                "balance": "0.00",
+                "rent_due": "the 1st",
+                "lease_start": "March 1, 2025",
+                "lease_end": "February 28, 2026",
+                "deposit": "1,850",
+                "status": "current, in good standing",
+                "pets": "one cat on file",
             }
         },
     )
-    assistant = Assistant(device_id=DEVICE_ID)
+    assistant = Assistant(tenant_id=TENANT_ID)
 
-    result = await assistant.read_instrument(None)
+    result = await assistant.lookup_resident(None)
 
-    # Exact values, never invented.
-    assert "E-101" in result
-    assert "4.2.1" in result
-    assert "diluent 62 percent" in result
-    assert "37.0 degrees Celsius" in result
-
-
-async def test_read_instrument_handles_unknown_device(stub_moss, monkeypatch) -> None:
-    monkeypatch.setattr(agent_module, "MOCK_INSTRUMENTS", {})
-    assistant = Assistant(device_id="nobody")
-    result = await assistant.read_instrument(None)
-    assert "couldn't reach" in result.lower()
+    assert "Sam Carter" in result
+    assert "1,850" in result
+    assert "Unit 2A, 10 Oak Ave" in result
+    assert "February 28, 2026" in result
 
 
-# --- State machine: start / advance / safety gate -----------------------------
+async def test_lookup_resident_handles_unknown(stub_moss, monkeypatch) -> None:
+    monkeypatch.setattr(agent_module, "MOCK_TENANTS", {})
+    assistant = Assistant(tenant_id="nobody")
+    result = await assistant.lookup_resident(None)
+    assert "couldn't find an account" in result.lower()
 
 
-async def test_start_remediation_returns_first_step(stub_moss, stub_procedures) -> None:
-    room = _FakeRoom()
-    assistant = Assistant(room=room, device_id=DEVICE_ID)
-
-    result = await assistant.start_remediation(None, "e 101")  # loose code formatting
-
-    assert assistant._session is not None
-    assert assistant._session.fault_code == "E-101"
-    assert assistant._session.step_idx == 0
-    assert "Step one of 3" in result
-    assert "Standby" in result
-    assert "biohazard" in result.lower()  # safety note spoken first
+# --- Per-resident memory ------------------------------------------------------
 
 
-async def test_start_remediation_refuses_service_only_fault(
-    stub_moss, stub_procedures
-) -> None:
-    """The safety gate: a service-only fault never enters a fix flow."""
-    assistant = Assistant(device_id=DEVICE_ID)
+async def test_remember_fact_writes_with_tenant_metadata(stub_moss) -> None:
+    assistant = Assistant(tenant_id=TENANT_ID)
+    result = await assistant.remember_fact(None, "Prefers texts over calls.")
+    assert isinstance(result, str) and result
 
-    result = await assistant.start_remediation(None, "E-707")
-
-    assert "field-service-only" in result.lower() or "service-only" in result.lower()
-    assert "escalat" in result.lower()
-    # Session exists but carries no steps to walk.
-    assert assistant._session is not None
-    assert assistant._session.steps == []
-
-
-async def test_start_remediation_unknown_code_escalates(
-    stub_moss, stub_procedures
-) -> None:
-    assistant = Assistant(device_id=DEVICE_ID)
-    result = await assistant.start_remediation(None, "E-999")
-    assert assistant._session is None
-    assert "don't have a documented" in result.lower()
-    assert "escalat" in result.lower()
-
-
-async def test_advance_step_walks_then_resolves(
-    stub_moss, stub_procedures, monkeypatch
-) -> None:
-    # No recipient configured -> the resolution receipt path makes no network call.
-    for var in ("SERVICE_DESK_PHONE", "TECH_PHONE", "DEMO_PHONE"):
-        monkeypatch.delenv(var, raising=False)
-    assistant = Assistant(device_id=DEVICE_ID)
-    await assistant.start_remediation(None, "E-101")
-
-    # Step 1 done, not cleared -> advance to step 2.
-    r2 = await assistant.advance_step(None, "Done, it's in Standby.")
-    assert "Step 2 of 3" in r2
-    assert assistant._session.step_idx == 1
-
-    # Step 2 clears the fault.
-    r3 = await assistant.advance_step(
-        None, "Probe Clean ran, no more flag.", fault_cleared=True
-    )
-    assert assistant._session.resolved is True
-    assert "cleared" in r3.lower()
-    # Resolution was logged to the per-instrument memory index.
     assert len(assistant._moss.add_docs_calls) == 1
-    _index, docs, _opts = assistant._moss.add_docs_calls[0]
-    assert docs[0].metadata == {"device_id": DEVICE_ID}
+    index, docs, _opts = assistant._moss.add_docs_calls[0]
+    assert index == agent_module.MEMORY_INDEX
+    assert docs[0].metadata == {"tenant_id": TENANT_ID}
+    assert "Prefers texts" in docs[0].text
+    assert docs[0].id.startswith(f"{TENANT_ID}-")
 
 
-async def test_advance_step_exhausts_then_signals_escalation(
-    stub_moss, stub_procedures
-) -> None:
-    assistant = Assistant(device_id=DEVICE_ID)
-    await assistant.start_remediation(None, "E-101")  # 3 steps
+async def test_recall_facts_filters_by_tenant_id(stub_moss) -> None:
+    room = _FakeRoom()
+    assistant = Assistant(room=room, tenant_id=TENANT_ID)
+    assistant._moss.query_result = _FakeSearchResult(
+        [
+            _FakeDoc("They prefer texts over calls."),
+            _FakeDoc("Reported a slow kitchen drain in May."),
+        ]
+    )
 
-    await assistant.advance_step(None, "done")  # -> step 2
-    await assistant.advance_step(None, "done")  # -> step 3
-    final = await assistant.advance_step(None, "still flagging")  # past last step
+    result = await assistant.recall_facts(None, "contact preference")
 
-    assert "still flagging" in final.lower()
-    assert "escalat" in final.lower()
-    assert len(assistant._session.attempts) == 3
-
-
-async def test_advance_step_without_session_guides_user(stub_moss) -> None:
-    assistant = Assistant(device_id=DEVICE_ID)
-    result = await assistant.advance_step(None, "I did something")
-    assert "haven't started" in result.lower()
+    assert "prefer texts" in result
+    index, _query, options = assistant._moss.query_calls[0]
+    assert index == agent_module.MEMORY_INDEX
+    assert options.top_k == 5
+    assert options.filter == {
+        "field": "tenant_id",
+        "condition": {"$eq": TENANT_ID},
+    }
+    assert len(room.local_participant.published) == 1
 
 
-# --- Escalation dossier -------------------------------------------------------
+# --- Resolve: work order + text ----------------------------------------------
 
 
-async def test_escalate_builds_dossier_and_degrades_without_recipient(
+async def test_create_work_order_degrades_without_recipient(
     stub_moss, monkeypatch
 ) -> None:
-    # No recipient configured -> the bridge isn't called and escalate degrades.
-    for var in ("SERVICE_DESK_PHONE", "TECH_PHONE", "DEMO_PHONE"):
+    for var in ("TENANT_PHONE", "DEMO_PHONE"):
         monkeypatch.delenv(var, raising=False)
     monkeypatch.setattr(
         agent_module,
-        "MOCK_INSTRUMENTS",
-        {DEVICE_ID: {"model": "Helix HX-220", "serial": DEVICE_ID, "firmware": "4.2.1"}},
+        "MOCK_TENANTS",
+        {TENANT_ID: {"name": "Sam", "unit": "Unit 2A"}},
     )
-    assistant = Assistant(device_id=DEVICE_ID)
-    assistant._session = RemediationSession(
-        fault_code="E-101",
-        description="probe clog",
-        severity="operator",
-        steps=["a", "b"],
-        safety="gloves",
-        attempts=[{"step_number": 1, "step": "a", "outcome": "no change"}],
-    )
+    assistant = Assistant(tenant_id=TENANT_ID)
 
-    result = await assistant.escalate_to_service(None)
+    result = await assistant.create_work_order(None, "Leaky kitchen faucet")
 
-    # Without a recipient it prepares (does not claim to send) and reads a summary.
-    assert "prepared" in result.lower()
-    assert "E-101" in result
-    assert assistant._session.escalated is True
-
-    # The dossier itself carries the attempted steps and instrument identity.
-    dossier = assistant._build_dossier(agent_module._instrument_for(DEVICE_ID))
-    assert "E-101" in dossier
-    assert "Steps attempted" in dossier
-    assert DEVICE_ID in dossier
+    # No recipient -> reads the work order number aloud, still logs it.
+    assert "work order number" in result.lower()
+    assert len(assistant._moss.add_docs_calls) == 1  # logged to memory
+    _index, docs, _opts = assistant._moss.add_docs_calls[0]
+    assert docs[0].metadata == {"tenant_id": TENANT_ID}
+    assert "Leaky kitchen faucet" in docs[0].text
 
 
-async def test_escalate_sends_dossier_via_imessage_bridge(stub_moss, monkeypatch) -> None:
-    monkeypatch.setenv("SERVICE_DESK_PHONE", "+15552223333")
+async def test_create_work_order_emergency_texts_via_bridge(
+    stub_moss, monkeypatch
+) -> None:
+    monkeypatch.setenv("TENANT_PHONE", "+15552223333")
     monkeypatch.setenv("ESCALATE_URL", "http://localhost:8787/send")
     monkeypatch.setenv("ESCALATE_SHARED_SECRET", "s3cret")
     monkeypatch.setattr(
         agent_module,
-        "MOCK_INSTRUMENTS",
-        {DEVICE_ID: {"model": "Helix HX-220", "serial": DEVICE_ID, "firmware": "4.2.1"}},
+        "MOCK_TENANTS",
+        {TENANT_ID: {"name": "Sam", "unit": "Unit 2A, 10 Oak Ave"}},
     )
 
     sent: dict = {}
@@ -353,62 +240,16 @@ async def test_escalate_sends_dossier_via_imessage_bridge(stub_moss, monkeypatch
             sent["headers"] = headers
             return _FakeResponse()
 
-    assistant = Assistant(device_id=DEVICE_ID)
-    assistant._session = RemediationSession(
-        fault_code="E-707",
-        description="pump failure",
-        severity="service",
-        steps=[],
-        safety="service only",
-    )
+    assistant = Assistant(tenant_id=TENANT_ID)
     monkeypatch.setattr(agent_module.httpx, "AsyncClient", _FakeAsyncClient)
 
-    result = await assistant.escalate_to_service(None)
+    result = await assistant.create_work_order(
+        None, "Water leaking from ceiling", urgency="emergency"
+    )
 
-    # POSTs the dossier to the Spectrum iMessage send service with recipient + secret.
-    assert "messaged" in result.lower()
+    assert "emergency" in result.lower() or "dispatched" in result.lower()
+    assert "texted" in result.lower()
     assert sent["url"].endswith("/send")
     assert sent["json"]["to"] == "+15552223333"
-    assert "E-707" in sent["json"]["body"]
+    assert "Water leaking from ceiling" in sent["json"]["body"]
     assert sent["headers"]["x-escalate-secret"] == "s3cret"
-
-
-# --- Per-instrument memory ----------------------------------------------------
-
-
-async def test_remember_observation_writes_with_device_metadata(stub_moss) -> None:
-    assistant = Assistant(device_id=DEVICE_ID)
-    result = await assistant.remember_observation(
-        None, "Probe clogs weekly on this box."
-    )
-    assert isinstance(result, str) and result
-
-    assert len(assistant._moss.add_docs_calls) == 1
-    index, docs, _opts = assistant._moss.add_docs_calls[0]
-    assert index == agent_module.MEMORY_INDEX
-    assert docs[0].metadata == {"device_id": DEVICE_ID}
-    assert "Probe clogs weekly" in docs[0].text
-    assert docs[0].id.startswith(f"{DEVICE_ID}-")
-
-
-async def test_recall_history_filters_by_device_id(stub_moss) -> None:
-    room = _FakeRoom()
-    assistant = Assistant(room=room, device_id=DEVICE_ID)
-    assistant._moss.query_result = _FakeSearchResult(
-        [
-            _FakeDoc("2026-05-01: E-101 cleared by reseating the probe."),
-            _FakeDoc("2026-04-12: replaced diluent pack."),
-        ]
-    )
-
-    result = await assistant.recall_history(None, "probe issues")
-
-    assert "reseating the probe" in result
-    index, _query, options = assistant._moss.query_calls[0]
-    assert index == agent_module.MEMORY_INDEX
-    assert options.top_k == 5
-    assert options.filter == {
-        "field": "device_id",
-        "condition": {"$eq": DEVICE_ID},
-    }
-    assert len(room.local_participant.published) == 1

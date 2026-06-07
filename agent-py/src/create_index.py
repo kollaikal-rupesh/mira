@@ -2,11 +2,10 @@
 
 Creates two indexes from the credentials in ``agent-py/.env.local``:
 
-* the static ``knowledge`` index (the HX-220 service manual / fault-code
-  procedures used for grounding), seeded from ``agent-py/knowledge.json``
-* the ``memory`` index (per-INSTRUMENT maintenance log), seeded with a single
-  placeholder document so the index exists and can be loaded before the first
-  runtime write.
+* the static ``knowledge`` index (the lease + property handbook used for
+  grounding), seeded from ``agent-py/knowledge.json``
+* the ``memory`` index (per-RESIDENT memory), seeded with a single placeholder
+  document so the index exists and can be loaded before the first runtime write.
 
 Run from the repo root via ``pnpm moss:index`` (which invokes
 ``uv --directory agent-py run src/create_index.py``) once Moss credentials are set.
@@ -75,15 +74,15 @@ def _load_knowledge_documents() -> list[DocumentInfo]:
 def _memory_seed_documents() -> list[DocumentInfo]:
     """A single placeholder doc so the memory index exists and loads cleanly.
 
-    The agent's memory tools write real per-instrument documents at runtime,
-    each tagged with a ``device_id``. This seed is filtered out at query time by
-    its sentinel ``device_id``.
+    The agent's memory tools write real per-resident documents at runtime, each
+    tagged with a ``tenant_id``. This seed is filtered out at query time by its
+    sentinel ``tenant_id``.
     """
     return [
         DocumentInfo(
             id="__seed__",
             text="(memory seed) placeholder document so the memory index can be loaded before the first write.",
-            metadata={"device_id": "__seed__"},
+            metadata={"tenant_id": "__seed__"},
         )
     ]
 

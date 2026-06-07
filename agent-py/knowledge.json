@@ -1,176 +1,62 @@
 [
   {
-    "id": "fault-E-101",
-    "fault_code": "E-101",
-    "severity": "operator",
-    "category": "fluidics",
-    "text": "Fault E-101 — Aspiration probe clog or clot detected on the Helix HX-220 hematology analyzer. Symptoms: sample not aspirated, flagged results, repeated 'no fluid detected' or partial draw, clotted whole-blood samples. This is an operator-recoverable fluidics fault. The documented fix is to run the Probe Clean cycle, inspect the probe tip for a visible clot or bend, and replace the aspiration probe (part number 612-09) only if it is bent or cracked. Always work with the instrument in Standby and wearing gloves: the probe area is a biohazard zone.",
-    "steps": [
-      "From the main screen, put the analyzer in Standby so nothing is aspirating.",
-      "Put on gloves and open the front fluidics door.",
-      "Open the Maintenance menu and run the Probe Clean cycle, which takes about ninety seconds.",
-      "Visually inspect the aspiration probe tip for a visible clot or a bend.",
-      "If the tip is bent or cracked, replace the aspiration probe, part number six-one-two dash zero-nine, and hand-tighten the fitting.",
-      "Close the door, run a Background Check, and confirm the result is within range."
-    ],
-    "safety": "Keep the analyzer in Standby and wear gloves. The probe and sample area is a biohazard zone.",
-    "metadata": { "fault_code": "E-101", "severity": "operator", "category": "fluidics", "service_only": "false" }
+    "id": "kb-rent-payment",
+    "text": "Q: When is rent due and how can a resident pay? A: Rent is due on the 1st of each month. There is a grace period through the 5th; rent received after the 5th is late. Residents can pay through the Mira resident portal by bank transfer or card, or enroll in AutoPay to have rent drawn automatically on the 1st. Always quote the resident's exact balance and due date from their account record; never estimate an amount.",
+    "metadata": { "category": "rent", "topic": "payment" }
   },
   {
-    "id": "fault-E-205",
-    "fault_code": "E-205",
-    "severity": "operator",
-    "category": "reagents",
-    "text": "Fault E-205 — Reagent pack low or empty on the Helix HX-220. Symptoms: 'reagent depleted' or 'diluent low' message, runs paused before aspiration, low-volume warning on the reagent screen. Operator-recoverable. The documented fix is to identify which pack is low on the Reagent screen, replace it with a fresh pack, scan or enter the new lot, and prime the affected reagent line. No tools required.",
-    "steps": [
-      "Open the Reagent screen and note which pack is low — diluent, lyse, or rinse.",
-      "Open the reagent compartment and remove the empty pack.",
-      "Insert a fresh pack and scan the lot barcode, or enter the lot number if scanning fails.",
-      "From the Maintenance menu, run Prime on the line you just replaced.",
-      "Confirm the reagent level reads full and the depleted warning has cleared."
-    ],
-    "safety": "Handle reagents per the safety data sheet and wear gloves. Do not mix lots within a single pack.",
-    "metadata": { "fault_code": "E-205", "severity": "operator", "category": "reagents", "service_only": "false" }
+    "id": "kb-late-fee",
+    "text": "Q: What is the late fee policy? A: If rent is not received by the end of the grace period on the 5th, a late fee of 50 dollars applies, plus 10 dollars per day after the 10th, up to a cap of 100 dollars per month. A first-time late fee may be waived once per 12 months for residents in good standing. Late rent that remains unpaid past the 10th may begin the notice process per the lease and local law.",
+    "metadata": { "category": "rent", "topic": "late_fee" }
   },
   {
-    "id": "fault-E-312",
-    "fault_code": "E-312",
-    "severity": "operator",
-    "category": "fluidics",
-    "text": "Fault E-312 — Sheath fluid pressure out of range on the Helix HX-220. Symptoms: pressure fault at startup or mid-run, unstable counts, 'sheath pressure low' or 'sheath pressure high' message. Normal sheath pressure is eight to twelve psi. Operator-recoverable. The documented fix is to check the sheath container level, inspect the sheath line for kinks or crimps, reseat the quick-connect, then prime the sheath and verify pressure.",
-    "steps": [
-      "Check the sheath container level and top it up if it is below the minimum line.",
-      "Trace the sheath line from the container to the instrument and straighten any kink or crimp.",
-      "Disconnect and firmly reseat the sheath quick-connect fitting until it clicks.",
-      "From the Maintenance menu, run Prime Sheath.",
-      "Confirm the sheath pressure reads between eight and twelve psi on the status screen."
-    ],
-    "safety": "Keep the analyzer in Standby while reseating fluidic connectors.",
-    "metadata": { "fault_code": "E-312", "severity": "operator", "category": "fluidics", "service_only": "false" }
+    "id": "kb-maintenance-request",
+    "text": "Q: How does a resident submit a maintenance request? A: Routine maintenance requests (a dripping faucet, a loose handle, an appliance issue) are logged as a work order and a technician is scheduled, typically within two to three business days. Describe the issue and the location in the unit. For anything urgent or after hours, see the emergency policy. Mira confirms every work order by text with a tracking number.",
+    "metadata": { "category": "maintenance", "topic": "request" }
   },
   {
-    "id": "fault-E-420",
-    "fault_code": "E-420",
-    "severity": "operator",
-    "category": "optics",
-    "text": "Fault E-420 — Optical flow cell bubble or contamination on the Helix HX-220. Symptoms: erratic scatter plots, optics flag, 'flow cell' warning, drifting white-cell differentials. Operator-recoverable. The documented fix is to run the Flow Cell Debubble routine; if the fault persists, run a Flow Cell Clean with cleaning agent, then a background check. If it still persists after a clean, it becomes an optics hardware concern and should be escalated.",
-    "steps": [
-      "Open the Maintenance menu and run Flow Cell Debubble.",
-      "Run a Background Check and see whether the E-420 flag clears.",
-      "If it is still flagging, run Flow Cell Clean using the cleaning agent when prompted.",
-      "Run one more Background Check to confirm the scatter plot looks clean.",
-      "If E-420 still persists after a clean, stop — this is now an optics hardware issue to escalate."
-    ],
-    "safety": "Use only the approved flow-cell cleaning agent. Do not insert anything into the flow cell.",
-    "metadata": { "fault_code": "E-420", "severity": "operator", "category": "optics", "service_only": "false" }
+    "id": "kb-maintenance-emergency",
+    "text": "Q: What counts as a maintenance emergency and what should a resident do? A: Emergencies are issues that threaten safety or cause active property damage: a major water leak or flooding, no heat in freezing weather, a gas smell, a total power outage, an overflowing sewage backup, or being locked out. For a gas smell, leave the unit immediately and call the gas company and 911 first, then Mira. For a water leak, shut off the water at the valve and report it as an emergency so a technician is dispatched right away rather than scheduled. Emergencies are handled 24/7.",
+    "metadata": { "category": "maintenance", "topic": "emergency" }
   },
   {
-    "id": "fault-W-118",
-    "fault_code": "W-118",
-    "severity": "operator",
-    "category": "quality",
-    "text": "Warning W-118 — Quality control result out of range on the Helix HX-220. Symptoms: a QC level flagged out of range on the Levey-Jennings chart, control values outside the assigned ranges. Operator-recoverable in most cases. The documented fix is to confirm the control vial is not expired, mix it gently, re-run the failing QC level, and if it is still out of range run a calibration with calibrator material. If calibration fails, escalate — do not release patient results while QC is failing.",
-    "steps": [
-      "On the QC screen, note which control level and which parameter is out of range.",
-      "Check the control vial expiry and confirm it is stored correctly; discard if expired.",
-      "Gently invert the control vial to mix — do not shake.",
-      "Re-run the failing QC level once.",
-      "If it is still out of range, run a Calibration using calibrator material from the Calibration menu.",
-      "If calibration fails or QC is still out, stop releasing results and escalate."
-    ],
-    "safety": "Do not release patient results while QC is failing. Mix controls gently; never shake.",
-    "metadata": { "fault_code": "W-118", "severity": "operator", "category": "quality", "service_only": "false" }
+    "id": "kb-water-shutoff",
+    "text": "Q: Where is the water shutoff and how do you stop a leak? A: Each unit has a main water shutoff valve, usually under the kitchen sink or near the water heater; turn it clockwise to stop the flow. Individual fixtures have their own shutoff valves behind or below them. For a leak, shut off the nearest valve first to limit damage, move belongings away from the water, and report it as an emergency work order so a technician is dispatched.",
+    "metadata": { "category": "maintenance", "topic": "water" }
   },
   {
-    "id": "fault-E-501",
-    "fault_code": "E-501",
-    "severity": "operator",
-    "category": "waste",
-    "text": "Fault E-501 — Waste container full on the Helix HX-220. Symptoms: 'waste full' message, runs paused, waste-sensor warning. Operator-recoverable. The documented fix is to put the instrument in Standby, empty the waste container following the lab's biohazard waste protocol, reseat the container, and reset the waste sensor.",
-    "steps": [
-      "Put the analyzer in Standby.",
-      "Put on gloves and remove the waste container.",
-      "Empty it following your lab's biohazard waste disposal protocol.",
-      "Reseat the empty container and confirm the cap and sensor float are properly connected.",
-      "From the Maintenance menu, run Reset Waste Sensor and confirm the warning clears."
-    ],
-    "safety": "Waste is a biohazard. Wear gloves and eye protection and follow your lab's disposal protocol.",
-    "metadata": { "fault_code": "E-501", "severity": "operator", "category": "waste", "service_only": "false" }
+    "id": "kb-repair-responsibility",
+    "text": "Q: Who is responsible for repairs, the landlord or the resident? A: The landlord is responsible for maintaining the structure, plumbing, electrical, heating, and supplied appliances in working order, and for habitability. The resident is responsible for damage they or their guests cause beyond normal wear and tear, for keeping the unit clean, and for replacing consumables like light bulbs and smoke-detector batteries. When responsibility is unclear, log the work order and Mira will assess on site; charges only apply for resident-caused damage and are disclosed first.",
+    "metadata": { "category": "maintenance", "topic": "responsibility" }
   },
   {
-    "id": "fault-E-630",
-    "fault_code": "E-630",
-    "severity": "conditional",
-    "category": "thermal",
-    "text": "Fault E-630 — Incubator or reaction-bath temperature out of range on the Helix HX-220. Target temperature is thirty-seven degrees Celsius plus or minus half a degree. Symptoms: temperature fault at startup, results held, 'temp out of range' message. This is conditional: if the instrument was just powered on or the room is cold, it usually just needs a warmup. If the temperature does not stabilize after a full warmup, or the ambient temperature is in range and it still cannot hold thirty-seven degrees, it becomes a heater or sensor hardware fault and must be escalated.",
-    "steps": [
-      "Confirm the room ambient temperature is within the instrument's rated range, typically eighteen to thirty degrees Celsius.",
-      "Check that the rear vents and intake are not blocked, and the instrument is not in direct sun or next to a heat source.",
-      "Allow a full fifteen-minute warmup from the status screen.",
-      "Check whether the temperature has reached thirty-seven degrees Celsius plus or minus half a degree.",
-      "If it is stable, you are done. If it still cannot hold temperature after warmup, stop — this is a heater or sensor fault to escalate."
-    ],
-    "safety": "Do not attempt to access the heater or temperature sensor; those are internal components.",
-    "metadata": { "fault_code": "E-630", "severity": "conditional", "category": "thermal", "service_only": "false" }
+    "id": "kb-security-deposit",
+    "text": "Q: How does the security deposit work and when is it returned? A: The security deposit is held for the term of the lease. After move-out, it is returned within the period required by local law (commonly 14 to 30 days) minus any lawful deductions for unpaid rent or damage beyond normal wear and tear. Normal wear and tear cannot be deducted. An itemized statement of any deductions is provided with the refund. Cleaning and painting for ordinary use are generally the landlord's cost, not deductions.",
+    "metadata": { "category": "deposit", "topic": "return" }
   },
   {
-    "id": "fault-E-707",
-    "fault_code": "E-707",
-    "severity": "service",
-    "category": "pneumatics",
-    "text": "Fault E-707 — Vacuum or pneumatic pump failure on the Helix HX-220. Symptoms: pump fault at startup, no vacuum, multiple fluidic faults at once, audible pump failure. This is a SERVICE-ONLY fault inside the sealed pneumatic assembly. There is no operator-recoverable procedure. Do NOT open the instrument or attempt an internal repair. Place the instrument in Standby and escalate to a Helix field service engineer with an escalation dossier.",
-    "steps": [],
-    "safety": "Service-only. Do not open the instrument. The pneumatic assembly is sealed and under pressure.",
-    "metadata": { "fault_code": "E-707", "severity": "service", "category": "pneumatics", "service_only": "true" }
+    "id": "kb-lease-renewal",
+    "text": "Q: How does lease renewal work? A: Mira sends a renewal offer about 60 days before the lease end date. A resident can renew for another term, switch to month-to-month where offered (often at a higher rate), or give notice to vacate. If no action is taken by the lease end, the lease may convert to month-to-month per its terms. Any rent change at renewal is stated in the offer and is subject to local rent regulations where they apply.",
+    "metadata": { "category": "lease", "topic": "renewal" }
   },
   {
-    "id": "fault-E-808",
-    "fault_code": "E-808",
-    "severity": "service",
-    "category": "optics",
-    "text": "Fault E-808 — Laser or optical bench hardware fault on the Helix HX-220. Symptoms: laser fault at startup, no optical signal, persistent optics failure that survives a flow-cell clean. This is a SERVICE-ONLY fault. The laser and optical bench are class-3B and factory-aligned. Do NOT open the optics enclosure or attempt alignment. Place the instrument in Standby and escalate to a Helix field service engineer.",
-    "steps": [],
-    "safety": "Service-only. Class-3B laser — do not open the optics enclosure under any circumstances.",
-    "metadata": { "fault_code": "E-808", "severity": "service", "category": "optics", "service_only": "true" }
+    "id": "kb-break-lease",
+    "text": "Q: Can a resident break their lease early? A: Breaking a lease early generally requires written notice and may involve an early-termination fee or responsibility for rent until the unit is re-rented, as stated in the lease. Some situations are protected by law (for example active military deployment, or unsafe/uninhabitable conditions) and may allow termination without penalty. Mira will work with the resident on options such as a lease transfer or finding a replacement resident.",
+    "metadata": { "category": "lease", "topic": "termination" }
   },
   {
-    "id": "fault-E-901",
-    "fault_code": "E-901",
-    "severity": "service",
-    "category": "controller",
-    "text": "Fault E-901 — Mainboard or firmware checksum error on the Helix HX-220. Symptoms: boot fails or hangs, checksum error, instrument will not initialize. This is a SERVICE-ONLY fault. Do NOT attempt a firmware reflash or open the controller. Power the instrument off and escalate to a Helix field service engineer with the current firmware version in the dossier.",
-    "steps": [],
-    "safety": "Service-only. Do not reflash firmware or open the controller housing.",
-    "metadata": { "fault_code": "E-901", "severity": "service", "category": "controller", "service_only": "true" }
+    "id": "kb-sublet-guest",
+    "text": "Q: What is the policy on subletting and long-term guests? A: Subletting requires prior written approval from Mira; the proposed subtenant must apply and be screened, and the original resident usually remains responsible under the lease. Guests staying longer than 14 consecutive days may be considered unauthorized occupants and must be added to the lease. Short visits are fine and need no approval.",
+    "metadata": { "category": "lease", "topic": "sublet" }
   },
   {
-    "id": "safety-standby-cover",
-    "fault_code": "",
-    "severity": "safety",
-    "category": "safety",
-    "text": "Safety interlock — before opening any cover, door, or fluidic connector on the Helix HX-220, place the instrument in Standby from the main screen and confirm there is no sample in transit. Never open a powered, running instrument. Moving parts and the sampler can cause injury.",
-    "steps": [],
-    "safety": "Always Standby before opening any cover.",
-    "metadata": { "severity": "safety", "category": "safety", "service_only": "false" }
+    "id": "kb-quiet-hours-rules",
+    "text": "Q: What are the community rules around noise, pets, and parking? A: Quiet hours are 10 PM to 7 AM; keep noise low so it does not disturb neighbors. Pets require an approved pet addendum and any applicable pet deposit or rent; service and assistance animals are not pets and are accommodated per law. Each unit has its assigned parking space or permit; guest parking is in marked visitor spots only, and unauthorized vehicles may be towed.",
+    "metadata": { "category": "community", "topic": "rules" }
   },
   {
-    "id": "safety-biohazard",
-    "fault_code": "",
-    "severity": "safety",
-    "category": "safety",
-    "text": "Safety interlock — the sample path, aspiration probe, and waste container on the Helix HX-220 contain whole blood and are biohazard zones. Always wear gloves and eye protection when working in these areas, and follow your lab's biohazard handling and disposal protocols.",
-    "steps": [],
-    "safety": "Sample, probe, and waste areas are biohazard zones — gloves and eye protection required.",
-    "metadata": { "severity": "safety", "category": "safety", "service_only": "false" }
-  },
-  {
-    "id": "safety-service-only",
-    "fault_code": "",
-    "severity": "safety",
-    "category": "safety",
-    "text": "Safety interlock — fault codes E-707 (pneumatic pump), E-808 (laser/optics hardware), and E-901 (mainboard/firmware) are field-service-engineer only. There is no operator-recoverable procedure for these. Do not open the instrument, do not attempt internal repair, and do not reflash firmware. Place the instrument in Standby and escalate with a dossier.",
-    "steps": [],
-    "safety": "E-707, E-808, E-901 are service-only. Never open the instrument for these.",
-    "metadata": { "severity": "safety", "category": "safety", "service_only": "true" }
+    "id": "kb-move-out",
+    "text": "Q: What is the move-out process? A: Give written notice per the lease (commonly 30 to 60 days before the end date). Schedule a move-out inspection, return all keys and remotes, and leave the unit broom-clean with personal belongings removed. The security deposit, minus any lawful deductions, is returned with an itemized statement within the legally required window. Forwarding address should be provided so the refund can be sent.",
+    "metadata": { "category": "lease", "topic": "move_out" }
   }
 ]
