@@ -21,7 +21,7 @@ from livekit.agents import (
     inference,
     room_io,
 )
-from livekit.plugins import ai_coustics, silero
+from livekit.plugins import ai_coustics, minimax, openai, silero
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from moss import DocumentInfo, MossClient, QueryOptions
 
@@ -64,6 +64,35 @@ def _tenant_for(tenant_id: str) -> dict:
     return MOCK_TENANTS.get(tenant_id, MOCK_TENANTS.get(DEFAULT_TENANT_ID, {}))
 
 
+def _build_llm():
+    """The brain. If QWEN_API_KEY is set, use Qwen via its OpenAI-compatible
+    endpoint (DashScope); otherwise the fast LiveKit Inference model (no key).
+    Note: Qwen is an external hop, so it trades some latency for the open model.
+    """
+    qwen_key = os.getenv("QWEN_API_KEY")
+    if qwen_key:
+        model = os.getenv("QWEN_MODEL", "qwen-plus")
+        base_url = os.getenv(
+            "QWEN_BASE_URL", "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+        )
+        logger.info("LLM: Qwen (%s) via %s", model, base_url)
+        return openai.LLM(model=model, api_key=qwen_key, base_url=base_url)
+    logger.info("LLM: LiveKit Inference google/gemini-2.5-flash")
+    return inference.LLM(model="google/gemini-2.5-flash")
+
+
+def _build_tts():
+    """The voice. If MINIMAX_API_KEY is set, use MiniMax TTS (speech-02-turbo,
+    expressive); otherwise Cartesia via LiveKit Inference (no key)."""
+    if os.getenv("MINIMAX_API_KEY"):
+        logger.info("TTS: MiniMax speech-02-turbo")
+        return minimax.TTS()
+    logger.info("TTS: LiveKit Inference cartesia/sonic-3")
+    return inference.TTS(
+        model="cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
+    )
+
+
 class Assistant(Agent):
     """Mira resident-support voice agent: answers from the lease + property
     handbook (grounded in Moss), quotes exact account figures, remembers the
@@ -72,12 +101,9 @@ class Assistant(Agent):
 
     def __init__(self, *, room=None, tenant_id: str = DEFAULT_TENANT_ID) -> None:
         super().__init__(
-            # The LLM (the agent's brain) runs on LiveKit Inference — no provider
-            # API key required. Gemini Flash for low time-to-first-token (voice
-            # latency). NOTE: Qwen is NOT on Inference — it would need a plugin +
-            # your own key/endpoint, and the external hop tends to ADD latency.
-            # See https://docs.livekit.io/agents/models/llm/
-            llm=inference.LLM(model="google/gemini-2.5-flash"),
+            # The brain: Qwen if QWEN_API_KEY is set, else fast Inference Gemini.
+            # See _build_llm. https://docs.livekit.io/agents/models/llm/
+            llm=_build_llm(),
             instructions=textwrap.dedent(
                 """\
                 You are Mira, a warm, capable resident-support assistant for a
@@ -408,11 +434,9 @@ async def my_agent(ctx: JobContext):
     session = AgentSession(
         # STT — the agent's ears. See https://docs.livekit.io/agents/models/stt/
         stt=inference.STT(model="deepgram/nova-3", language="multi"),
-        # TTS — the agent's voice. (MiniMax swap is wired here once verified.)
-        # See https://docs.livekit.io/agents/models/tts/
-        tts=inference.TTS(
-            model="cartesia/sonic-3", voice="9626c31c-bec5-4cca-baa8-f8ba9e84c8bc"
-        ),
+        # TTS — MiniMax if MINIMAX_API_KEY is set, else Cartesia via Inference.
+        # See _build_tts. https://docs.livekit.io/agents/models/tts/
+        tts=_build_tts(),
         # Hands-free turn-taking.
         turn_detection=MultilingualModel(),
         vad=ctx.proc.userdata["vad"],
