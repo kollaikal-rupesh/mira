@@ -58,5 +58,30 @@
     "id": "kb-move-out",
     "text": "Q: What is the move-out process? A: Give written notice per the lease (commonly 30 to 60 days before the end date). Schedule a move-out inspection, return all keys and remotes, and leave the unit broom-clean with personal belongings removed. The security deposit, minus any lawful deductions, is returned with an itemized statement within the legally required window. Forwarding address should be provided so the refund can be sent.",
     "metadata": { "category": "lease", "topic": "move_out" }
+  },
+  {
+    "id": "kb-after-hours-support",
+    "text": "Q: How do I get help after office hours? A: The leasing office is open Monday to Friday, 9 AM to 5 PM. Outside those hours, weekends, and holidays, you can still reach Mira 24/7 by phone or text for questions and to report issues. Emergencies are handled immediately around the clock. Non-emergency requests submitted after hours are logged right away and scheduled the next business day, so nothing falls through the cracks.",
+    "metadata": { "category": "after_hours", "topic": "support" }
+  },
+  {
+    "id": "kb-after-hours-emergency",
+    "text": "Q: What is an after-hours emergency and what should I do? A: For anything life-threatening or a gas leak, call 911 first. Property emergencies handled 24/7 include a major water leak or flooding, no heat in freezing weather, no power to the whole unit, a sewage backup, a broken exterior door or lock that is a security risk, or being locked out. Report these right away and an on-call technician is dispatched immediately. Routine issues like a dripping faucet, a squeaky door, or a single light out are not emergencies and are scheduled during business hours.",
+    "metadata": { "category": "after_hours", "topic": "emergency" }
+  },
+  {
+    "id": "kb-after-hours-lockout",
+    "text": "Q: I am locked out after hours, what do I do? A: Report a lockout and the on-call team will arrange access to your unit. Have ID ready to verify you are a resident. An after-hours lockout service fee may apply per your lease. For your safety, do not try to force a door or window or climb in; wait for the on-call team.",
+    "metadata": { "category": "after_hours", "topic": "lockout" }
+  },
+  {
+    "id": "kb-after-hours-noise",
+    "text": "Q: A neighbor is being loud late at night, what can I do? A: Quiet hours are 10 PM to 7 AM. For an after-hours noise disturbance, note the date and time and report it; management follows up the next business day and repeated violations are addressed per the lease. If you ever feel unsafe, or it looks like a domestic or violent disturbance, call 911 first.",
+    "metadata": { "category": "after_hours", "topic": "noise" }
+  },
+  {
+    "id": "kb-after-hours-utility-outage",
+    "text": "Q: The power, water, or heat went out after hours. A: First check whether it affects just your unit or the whole building, and check your breaker panel for a tripped breaker. A building-wide outage is often a utility-company issue; report it and management will coordinate with the provider. Loss of heat in freezing weather, no running water, or a full power outage in your unit is treated as an after-hours emergency and a technician is dispatched right away.",
+    "metadata": { "category": "after_hours", "topic": "utility_outage" }
   }
 ]
