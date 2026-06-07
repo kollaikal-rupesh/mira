@@ -19,6 +19,7 @@ PDFs, swap in Unsiloed parsing at the marked point.
 from __future__ import annotations
 
 import io
+import json
 import os
 import re
 import uuid
@@ -27,11 +28,13 @@ from pathlib import Path
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from moss import DocumentInfo, MossClient
 from pypdf import PdfReader
 
 AGENT_DIR = Path(__file__).resolve().parent.parent
+KNOWLEDGE_PATH = AGENT_DIR / "knowledge.json"
 load_dotenv(AGENT_DIR / ".env.local")
 
 KNOWLEDGE_INDEX = os.getenv("MOSS_INDEX_NAME", "knowledge")
@@ -39,8 +42,19 @@ UPLOAD_PORT = int(os.getenv("UPLOAD_PORT", "8080"))
 # Target chunk size (characters). Chunks split on paragraph/sentence boundaries.
 CHUNK_CHARS = int(os.getenv("UPLOAD_CHUNK_CHARS", "1100"))
 
-app = FastAPI(title="Moss Document Uploader")
+app = FastAPI(title="Mira Knowledge Service")
+# Allow the dashboard (Next dev on any localhost port) to read/upload.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 _moss = MossClient(os.getenv("MOSS_PROJECT_ID"), os.getenv("MOSS_PROJECT_KEY"))
+
+# In-memory record of docs uploaded this session (the seeded knowledge.json docs
+# are listed separately). Lets the KB view show what's been added live.
+_uploaded: list[dict] = []
 
 
 def _extract_text(filename: str, raw: bytes) -> str:
@@ -137,6 +151,7 @@ async def ingest(files: list[UploadFile] = File(...)) -> JSONResponse:  # noqa: 
             continue
 
         total_chunks += len(docs)
+        _uploaded.append({"source": source, "chunks": len(docs)})
         results.append({"file": source, "ok": True, "chunks": len(docs)})
 
     return JSONResponse(
@@ -145,6 +160,41 @@ async def ingest(files: list[UploadFile] = File(...)) -> JSONResponse:  # noqa: 
             "index": KNOWLEDGE_INDEX,
             "total_chunks": total_chunks,
             "files": results,
+        }
+    )
+
+
+@app.get("/api/kb")
+async def kb() -> JSONResponse:
+    """List what's in the knowledge base: the seeded docs (from knowledge.json)
+    plus anything uploaded this session. Used by the dashboard Knowledge view.
+    """
+    seeded: list[dict] = []
+    try:
+        with KNOWLEDGE_PATH.open("r", encoding="utf-8") as handle:
+            for entry in json.load(handle):
+                if not isinstance(entry, dict):
+                    continue
+                meta = entry.get("metadata") or {}
+                text = (entry.get("text") or "").strip()
+                seeded.append(
+                    {
+                        "id": entry.get("id"),
+                        "category": meta.get("category", "general"),
+                        "topic": meta.get("topic", ""),
+                        "preview": text[:240],
+                    }
+                )
+    except (OSError, json.JSONDecodeError):
+        pass
+
+    return JSONResponse(
+        {
+            "ok": True,
+            "index": KNOWLEDGE_INDEX,
+            "seeded": seeded,
+            "uploaded": _uploaded,
+            "counts": {"seeded": len(seeded), "uploaded": len(_uploaded)},
         }
     )
 
