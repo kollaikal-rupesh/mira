@@ -20,6 +20,7 @@
     "agent:py:download-files": "uv --directory agent-py run src/agent.py download-files",
 
     "moss:index": "uv --directory agent-py run src/create_index.py",
+    "moss:upload": "uv --directory agent-py run src/upload_server.py",
 
     "build": "pnpm --dir frontend build",
     "start:frontend": "pnpm --dir frontend start",
